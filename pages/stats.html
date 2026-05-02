@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>stats ♡ Carly's Archive</title>
+  <link rel="stylesheet" href="../css/theme.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="banner">
+      <h1>✨ stats</h1>
+      <div class="tagline">~ the numbers behind the archive ~</div>
+    </header>
+    <nav class="nav" aria-label="Main">
+      <a href="../index.html">♡ home</a>
+      <a href="./books.html">📚 books</a>
+      <a href="./manga.html">📖 manga</a>
+      <a href="./cds.html">💿 cds</a>
+      <a href="./concerts.html">🎤 concerts</a>
+      <a href="./anime.html">🌸 anime</a>
+      <a href="./tv.html">📺 tv</a>
+      <a href="./movies.html">🎬 movies</a>
+      <a href="./games.html">🎮 games</a>
+      <a href="./travel.html">✈️ travel</a>
+      <a href="./stats.html">✨ stats</a>
+    </nav>
+    <main class="main">
+      <h2>totals</h2>
+      <div id="totals" class="stat-grid">
+        <p class="empty-state">loading…</p>
+      </div>
+      <hr class="cute" />
+      <h2>by year</h2>
+      <div id="by-year"></div>
+      <hr class="cute" />
+      <h2>top tags / genres</h2>
+      <div id="top-tags"></div>
+    </main>
+  </div>
+  <script src="../js/sparkle.js"></script>
+  <script type="module">
+    import { injectFooter, highlightNav } from '../js/layout.js';
+    highlightNav(); injectFooter();
+
+    const ICONS = {
+      books:'📚', cds:'💿', concerts:'🎤', anime:'🌸',
+      tv:'📺', movies:'🎬', games:'🎮', travel:'✈️'
+    };
+
+    (async () => {
+      let stats;
+      try {
+        const res = await fetch('../data/stats.json');
+        if (!res.ok) throw 0;
+        stats = await res.json();
+      } catch {
+        document.getElementById('totals').innerHTML =
+          '<p class="empty-state">no stats yet — run the build script ♡</p>';
+        return;
+      }
+
+      const totals = document.getElementById('totals');
+      totals.innerHTML = '';
+      Object.entries(stats.totals || {}).forEach(([cat, n]) => {
+        const c = document.createElement('div');
+        c.className = 'stat-card';
+        c.innerHTML = `<span class="num">${n}</span>${ICONS[cat] || ''} ${cat}`;
+        totals.appendChild(c);
+      });
+
+      const byYear = document.getElementById('by-year');
+      if (stats.byYear) {
+        const max = Math.max(1, ...Object.values(stats.byYear).flatMap(v => Object.values(v)));
+        const years = [...new Set(Object.values(stats.byYear).flatMap(v => Object.keys(v)))].sort();
+        byYear.innerHTML = years.map(y => {
+          const segs = Object.entries(stats.byYear).map(([cat, m]) => {
+            const v = m[y] || 0;
+            if (!v) return '';
+            const w = (v / max) * 100;
+            return `<span title="${cat}: ${v}" style="display:inline-block;width:${w}%;background:var(--pink-magenta);height:14px;margin-right:2px;border-radius:3px;"></span>`;
+          }).join('');
+          return `<div style="margin:0.3rem 0;font-size:0.9rem;"><strong>${y}</strong> ${segs}</div>`;
+        }).join('') || '<p class="empty-state">no dated entries yet.</p>';
+      }
+
+      const topTags = document.getElementById('top-tags');
+      if (stats.topTags && stats.topTags.length) {
+        topTags.innerHTML = stats.topTags
+          .map(([t, n]) => `<span style="display:inline-block;background:var(--pink-baby);border:2px dashed var(--pink-magenta);border-radius:12px;padding:0.2rem 0.6rem;margin:0.2rem;">${t} (${n})</span>`)
+          .join('');
+      } else {
+        topTags.innerHTML = '<p class="empty-state">no tags yet.</p>';
+      }
+    })();
+  </script>
+</body>
+</html>

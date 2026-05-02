@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>manga ♡ Carly's Archive</title>
+  <link rel="stylesheet" href="../css/theme.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="banner">
+      <h1>📖 manga</h1>
+      <div class="tagline">~ series i'm reading & love ~</div>
+    </header>
+    <nav class="nav" aria-label="Main">
+      <a href="../index.html">♡ home</a>
+      <a href="./books.html">📚 books</a>
+      <a href="./manga.html">📖 manga</a>
+      <a href="./cds.html">💿 cds</a>
+      <a href="./concerts.html">🎤 concerts</a>
+      <a href="./anime.html">🌸 anime</a>
+      <a href="./tv.html">📺 tv</a>
+      <a href="./movies.html">🎬 movies</a>
+      <a href="./games.html">🎮 games</a>
+      <a href="./travel.html">✈️ travel</a>
+      <a href="./stats.html">✨ stats</a>
+    </nav>
+    <main class="main">
+      <div id="list-controls" class="controls"></div>
+      <div id="list-root"></div>
+    </main>
+  </div>
+  <script src="../js/sparkle.js"></script>
+  <script type="module">
+    import { injectFooter, highlightNav } from '../js/layout.js';
+    import { initListView } from '../js/list-view.js';
+    highlightNav(); injectFooter();
+    initListView({
+      category: 'manga',
+      sortable: ['dateFinished', 'rating', 'title', 'year', 'volumesOwnedCount'],
+      filterable: ['status', 'genre', 'author'],
+      fields: { cardMeta: ['author', 'year'] }
+    });
+
+    // After cards render, decorate each manga card with an "owned X / Y" bar.
+    const observer = new MutationObserver(() => {
+      document.querySelectorAll('.card:not([data-mangabar])').forEach(card => {
+        const root = document.getElementById('list-root');
+        const items = root.__items;
+        // We don't have items array exposed; pull data from the card's title + cached fetch
+        card.dataset.mangabar = '1';
+      });
+    });
+    observer.observe(document.getElementById('list-root'), { childList: true, subtree: true });
+
+    // Simpler approach: fetch manga.json once, then on click reveal volume info via list-view's modal.
+    // We also want the bar on the card. Re-render cards with extra HTML after list-view paints.
+    let cachedItems = null;
+    async function loadItems() {
+      if (cachedItems) return cachedItems;
+      try {
+        const res = await fetch('../data/manga.json');
+        if (res.ok) cachedItems = await res.json();
+      } catch {}
+      return cachedItems || [];
+    }
+    function renderBars() {
+      loadItems().then(items => {
+        const map = new Map(items.map(i => [i.id, i]));
+        document.querySelectorAll('.card').forEach(card => {
+          const id = card.dataset.id;
+          const item = map.get(id);
+          if (!item || card.querySelector('.vol-bar')) return;
+          const owned = item.volumesOwnedCount || 0;
+          const total = item.totalVolumes;
+          const pct = total ? Math.min(100, (owned / total) * 100) : (owned ? 100 : 0);
+          const label = total ? `owned ${owned} / ${total}` : (owned ? `owned ${owned} vol` : 'none owned');
+          const bar = document.createElement('div');
+          bar.className = 'vol-bar';
+          bar.style.cssText = 'margin-top:0.4rem;font-size:0.75rem;color:var(--plum-soft);';
+          bar.innerHTML = `
+            <div>${label}</div>
+            <div style="background:var(--pink-baby);border:1px solid var(--pink-magenta);border-radius:6px;height:8px;overflow:hidden;margin-top:2px;">
+              <div style="width:${pct}%;height:100%;background:var(--pink-magenta);"></div>
+            </div>
+          `;
+          card.appendChild(bar);
+        });
+      });
+    }
+    new MutationObserver(renderBars).observe(document.getElementById('list-root'), { childList: true, subtree: true });
+    setTimeout(renderBars, 500);
+  </script>
+</body>
+</html>

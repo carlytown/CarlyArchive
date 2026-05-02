@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" data-last-updated="2026-05-02">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carly's Archive ♡</title>
+  <meta name="description" content="A pink, sparkly archive of every book, album, show, game, concert, and trip I've loved." />
+  <link rel="stylesheet" href="./css/theme.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="banner">
+      <h1>✿ Carly's Archive ✿</h1>
+      <div class="tagline">~ a personal little corner of the internet ~</div>
+    </header>
+
+    <nav class="nav" aria-label="Main">
+      <a href="./index.html">♡ home</a>
+      <a href="./pages/books.html">📚 books</a>
+      <a href="./pages/manga.html">📖 manga</a>
+      <a href="./pages/cds.html">💿 cds</a>
+      <a href="./pages/concerts.html">🎤 concerts</a>
+      <a href="./pages/anime.html">🌸 anime</a>
+      <a href="./pages/tv.html">📺 tv</a>
+      <a href="./pages/movies.html">🎬 movies</a>
+      <a href="./pages/games.html">🎮 games</a>
+      <a href="./pages/travel.html">✈️ travel</a>
+      <a href="./pages/stats.html">✨ stats</a>
+    </nav>
+
+    <div class="home-layout">
+      <aside class="sidebar" aria-label="About">
+        <h3>♡ about me</h3>
+        <p>hi! welcome to my archive ♡ this is where i keep track of everything i've read, watched, listened to, and visited.</p>
+        <h3>♡ currently</h3>
+        <ul style="padding-left:1.1rem;">
+          <li>📖 reading: <em>tbd</em></li>
+          <li>📺 watching: <em>tbd</em></li>
+          <li>🎧 listening: <em>tbd</em></li>
+        </ul>
+        <h3>♡ stickers</h3>
+        <div class="sticker-row" aria-hidden="true">
+          <img src="./assets/decor/sticker-1.gif" alt="" onerror="this.style.display='none'" />
+          <img src="./assets/decor/sticker-2.gif" alt="" onerror="this.style.display='none'" />
+          <img src="./assets/decor/sticker-3.gif" alt="" onerror="this.style.display='none'" />
+          <img src="./assets/decor/sticker-4.gif" alt="" onerror="this.style.display='none'" />
+        </div>
+      </aside>
+
+      <main class="main">
+        <h2>welcome ♡</h2>
+        <p>pick a category to browse, or check out the <a href="./pages/stats.html">stats page</a> to see counts and totals.</p>
+        <hr class="cute" />
+        <h3>recently added</h3>
+        <div id="recent-root">
+          <p class="empty-state">no items yet — add things in notion and run the build ♡</p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="./js/sparkle.js"></script>
+  <script type="module">
+    import { injectFooter, highlightNav, rel } from './js/layout.js';
+    highlightNav();
+    injectFooter();
+
+    // Try to load combined data and show 8 most recent
+    (async () => {
+      try {
+        const res = await fetch('./data/all.json');
+        if (!res.ok) return;
+        const items = await res.json();
+        items.sort((a, b) => (b.dateFinished || b.dateAdded || '').localeCompare(a.dateFinished || a.dateAdded || ''));
+        const recent = items.slice(0, 8);
+        if (!recent.length) return;
+        const root = document.getElementById('recent-root');
+        const grid = document.createElement('div');
+        grid.className = 'card-grid';
+        recent.forEach(i => {
+          const a = document.createElement('a');
+          a.className = 'card';
+          a.href = `./pages/${i.category}.html`;
+          a.style.textDecoration = 'none';
+          a.innerHTML = `
+            <img class="cover" src="${i.cover ? './' + i.cover : ''}" alt="" onerror="this.style.visibility='hidden'" loading="lazy" />
+            <div class="title">${i.title || ''}</div>
+            <div class="meta">${i.category}</div>
+          `;
+          grid.appendChild(a);
+        });
+        root.innerHTML = '';
+        root.appendChild(grid);
+      } catch {}
+    })();
+  </script>
+</body>
+</html>

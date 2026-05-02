@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>travel ♡ Carly's Archive</title>
+  <link rel="stylesheet" href="../css/theme.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="banner">
+      <h1>✈️ travel</h1>
+      <div class="tagline">~ places i've been ~</div>
+    </header>
+    <nav class="nav" aria-label="Main">
+      <a href="../index.html">♡ home</a>
+      <a href="./books.html">📚 books</a>
+      <a href="./manga.html">📖 manga</a>
+      <a href="./cds.html">💿 cds</a>
+      <a href="./concerts.html">🎤 concerts</a>
+      <a href="./anime.html">🌸 anime</a>
+      <a href="./tv.html">📺 tv</a>
+      <a href="./movies.html">🎬 movies</a>
+      <a href="./games.html">🎮 games</a>
+      <a href="./travel.html">✈️ travel</a>
+      <a href="./stats.html">✨ stats</a>
+    </nav>
+    <main class="main">
+      <div id="list-controls" class="controls"></div>
+      <div id="list-root"></div>
+    </main>
+  </div>
+  <script src="../js/sparkle.js"></script>
+  <script type="module">
+    import { injectFooter, highlightNav } from '../js/layout.js';
+    import { initListView } from '../js/list-view.js';
+    highlightNav(); injectFooter();
+    initListView({
+      category: 'travel',
+      sortable: ['date', 'place'],
+      filterable: ['country'],
+      fields: { cardMeta: ['country', 'date'] }
+    });
+  </script>
+</body>
+</html>
