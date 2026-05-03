@@ -2,7 +2,7 @@
   "_comment": "Map each category to its Notion database ID. Get the ID from the database URL: notion.so/<workspace>/<DATABASE_ID>?v=... — it's the 32-char hex string before the ?. Leave a value as an empty string to skip that category.",
   "books": "",
   "manga": "354435b2cda180119b78ffb89029213e",
-  "cds": "",
+  "cds": "354435b2cda18071a0bdc4fbebe12a6e",
   "concerts": "",
   "anime": "354435b2cda1802fb0d7d4b026128f27",
   "tv": "",

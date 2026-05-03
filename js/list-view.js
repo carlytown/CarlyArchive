@@ -6,6 +6,8 @@ import { rel } from './layout.js';
 export async function initListView(opts) {
   const { category, fields = {}, sortable = [], filterable = [] } = opts;
   const container = document.getElementById('list-root');
+  container.dataset.category = category;
+  document.body.dataset.category = category;
   container.innerHTML = '<p class="empty-state">Loading…</p>';
 
   let items = [];
@@ -131,6 +133,7 @@ function makeCard(item, fields) {
     const v = item[f];
     if (!v) return '';
     if (f === 'status') return statusBadge(v);
+    if (f === 'playcount') return `<div class="meta lf-playcount">♫ ${Number(v).toLocaleString()} plays</div>`;
     return `<div class="meta">${escapeHtml(Array.isArray(v) ? v.join(', ') : String(v))}</div>`;
   }).join('');
   const rating = item.rating ? `<div class="rating">${'★'.repeat(item.rating)}${'☆'.repeat(5 - item.rating)}</div>` : '';

@@ -36,8 +36,9 @@ export function fetchJson(url, headers = {}) {
     const req = (url.startsWith('https') ? https : http).get(url, {
       headers: { 'User-Agent': 'CarlysArchive/0.1 (personal site)', 'Accept': 'application/json', ...headers }
     }, (res) => {
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        return resolve(fetchJson(res.headers.location, headers));
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+        const next = new URL(res.headers.location, url).toString();
+        return resolve(fetchJson(next, headers));
       }
       if (res.statusCode >= 400) {
         res.resume();
@@ -64,10 +65,11 @@ export function downloadFile(url, dest) {
       const req = (url.startsWith('https') ? https : http).get(url, {
         headers: { 'User-Agent': 'CarlysArchive/0.1' }
       }, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
+        if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
           file.close();
           fsSync.unlinkSync(dest);
-          return resolve(downloadFile(res.headers.location, dest));
+          const next = new URL(res.headers.location, url).toString();
+          return resolve(downloadFile(next, dest));
         }
         if (res.statusCode >= 400) {
           file.close();

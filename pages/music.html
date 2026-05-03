@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>music ♡ Carly's Archive</title>
+  <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/music.css" />
+</head>
+<body data-category="music">
+  <div class="page">
+    <header class="banner">
+      <h1>🎧 music</h1>
+      <div class="tagline">~ everything i'm streaming, scrobbled to last.fm ~</div>
+    </header>
+    <nav class="nav" aria-label="Main">
+      <a href="../index.html">♡ home</a>
+      <a href="./books.html">📚 books</a>
+      <a href="./manga.html">📖 manga</a>
+      <a href="./cds.html">💿 cds</a>
+      <a href="./concerts.html">🎤 concerts</a>
+      <a href="./anime.html">🌸 anime</a>
+      <a href="./tv.html">📺 tv</a>
+      <a href="./movies.html">🎬 movies</a>
+      <a href="./games.html">🎮 games</a>
+      <a href="./travel.html">✈️ travel</a>
+      <a href="./music.html">🎧 music</a>
+      <a href="./stats.html">✨ stats</a>
+    </nav>
+    <main class="main">
+      <section id="now-playing-section" class="lf-section"></section>
+      <section class="lf-section">
+        <h2>♡ top albums (all time)</h2>
+        <div id="top-albums" class="card-grid lf-album-grid"></div>
+      </section>
+      <section class="lf-section">
+        <h2>♡ top artists (all time)</h2>
+        <ol id="top-artists" class="lf-artist-list"></ol>
+      </section>
+      <section class="lf-section">
+        <h2>♡ recent scrobbles</h2>
+        <ol id="recent-scrobbles" class="lf-recent-list"></ol>
+      </section>
+      <p class="lf-attribution">data from <a href="https://www.last.fm/user/carlytown" target="_blank" rel="noopener">last.fm/carlytown</a> ♡</p>
+    </main>
+  </div>
+  <script src="../js/sparkle.js"></script>
+  <script type="module">
+    import { injectFooter, highlightNav } from '../js/layout.js';
+    import { renderMusicPage } from '../js/music.js';
+    highlightNav(); injectFooter();
+    renderMusicPage('../');
+  </script>
+</body>
+</html>

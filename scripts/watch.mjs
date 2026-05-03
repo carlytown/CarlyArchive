@@ -89,7 +89,7 @@ function runBuild() {
   buildInFlight = true;
   return new Promise((resolve) => {
     const start = Date.now();
-    const child = spawn('node', ['scripts/fetch-notion.mjs'], {
+    const child = spawn('npm', ['run', '-s', 'build'], {
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: process.env

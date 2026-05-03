@@ -172,6 +172,11 @@ h3 { font-size: 1.35rem; }
   border-radius: 6px;
   background: var(--pink-baby);
 }
+/* Square covers for music & travel — album art / photos look better square */
+body[data-category="cds"] .card img.cover,
+body[data-category="travel"] .card img.cover {
+  aspect-ratio: 1 / 1;
+}
 .card .title { font-weight: 700; margin-top: 0.4rem; font-size: 0.95rem; }
 .card .meta  { font-size: 0.8rem; color: var(--plum-soft); }
 .card .rating { color: var(--pink-magenta); letter-spacing: 2px; }

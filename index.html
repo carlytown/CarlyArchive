@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" data-last-updated="2026-05-02">
+<html lang="en" data-last-updated="2026-05-03">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Carly's Archive ♡</title>
   <meta name="description" content="A pink, sparkly archive of every book, album, show, game, concert, and trip I've loved." />
   <link rel="stylesheet" href="./css/theme.css" />
+  <link rel="stylesheet" href="./css/music.css" />
 </head>
 <body>
   <div class="page">
@@ -25,6 +26,7 @@
       <a href="./pages/movies.html">🎬 movies</a>
       <a href="./pages/games.html">🎮 games</a>
       <a href="./pages/travel.html">✈️ travel</a>
+      <a href="./pages/music.html">🎧 music</a>
       <a href="./pages/stats.html">✨ stats</a>
     </nav>
 
@@ -32,11 +34,14 @@
       <aside class="sidebar" aria-label="About">
         <h3>♡ about me</h3>
         <p>hi! welcome to my archive ♡ this is where i keep track of everything i've read, watched, listened to, and visited.</p>
+        <h3>♡ now playing</h3>
+        <div id="home-now-playing">
+          <div class="lf-now lf-now-idle"><span class="lf-now-icon">♫</span><div><div class="lf-now-label">loading…</div></div></div>
+        </div>
         <h3>♡ currently</h3>
         <ul style="padding-left:1.1rem;">
           <li>📖 reading: <em>tbd</em></li>
           <li>📺 watching: <em>tbd</em></li>
-          <li>🎧 listening: <em>tbd</em></li>
         </ul>
         <h3>♡ stickers</h3>
         <div class="sticker-row" aria-hidden="true">
@@ -62,8 +67,10 @@
   <script src="./js/sparkle.js"></script>
   <script type="module">
     import { injectFooter, highlightNav, rel } from './js/layout.js';
+    import { renderNowPlayingWidget } from './js/music.js';
     highlightNav();
     injectFooter();
+    renderNowPlayingWidget('#home-now-playing', './');
 
     // Try to load combined data and show 8 most recent
     (async () => {

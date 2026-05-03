@@ -5,7 +5,9 @@
   "type": "module",
   "description": "A pink, sparkly, old-school personal archive of books, music, anime, TV, movies, games, concerts and travel.",
   "scripts": {
-    "build": "node scripts/fetch-notion.mjs",
+    "build": "node scripts/fetch-notion.mjs && node scripts/fetch-lastfm.mjs",
+    "build:notion": "node scripts/fetch-notion.mjs",
+    "build:lastfm": "node scripts/fetch-lastfm.mjs",
     "watch": "node scripts/watch.mjs",
     "serve": "npx --yes serve ."
   },
