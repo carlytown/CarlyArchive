@@ -14,6 +14,7 @@
     </header>
     <nav class="nav" aria-label="Main">
       <a href="../index.html">♡ home</a>
+      <a href="./statuses.html">📝 statuses</a>
       <a href="./books.html">📚 books</a>
       <a href="./manga.html">📖 manga</a>
       <a href="./cds.html">💿 cds</a>
@@ -27,21 +28,130 @@
       <a href="./stats.html">✨ stats</a>
     </nav>
     <main class="main">
-      <div id="list-controls" class="controls"></div>
-      <div id="list-root"></div>
+      <section>
+        <h2>🎟️ upcoming</h2>
+        <div id="upcoming-root"><p class="empty-state">loading…</p></div>
+      </section>
+      <hr class="cute" />
+      <section>
+        <h2>✨ past shows</h2>
+        <div id="past-root"><p class="empty-state">loading…</p></div>
+      </section>
     </main>
   </div>
   <script src="../js/sparkle.js"></script>
   <script type="module">
     import { injectFooter, highlightNav } from '../js/layout.js';
-    import { initListView } from '../js/list-view.js';
     highlightNav(); injectFooter();
-    initListView({
-      category: 'concerts',
-      sortable: ['date', 'rating', 'artist'],
-      filterable: ['city', 'venue'],
-      fields: { cardMeta: ['artist', 'venue', 'date'] }
-    });
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    // Parse YYYY-MM-DD as a local date (not UTC) so timezone offsets don't
+    // shift the day backwards (e.g. "2026-05-05" was being read as May 4 in EDT).
+    function parseLocalDate(iso) {
+      if (!iso) return null;
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+      if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      const d = new Date(iso);
+      return isNaN(d) ? null : d;
+    }
+    function fmtDate(iso) {
+      const d = parseLocalDate(iso);
+      if (!d) return iso || '';
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    function daysUntil(iso) {
+      const d = parseLocalDate(iso);
+      if (!d) return null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      d.setHours(0, 0, 0, 0);
+      return Math.round((d - today) / 86400000);
+    }
+    function countdown(days) {
+      if (days == null) return '';
+      if (days === 0) return '<span class="countdown today">tonight! ✨</span>';
+      if (days === 1) return '<span class="countdown soon">tomorrow! 💖</span>';
+      if (days <= 7) return `<span class="countdown soon">${days} days!!</span>`;
+      if (days <= 30) return `<span class="countdown">${days} days</span>`;
+      return `<span class="countdown far">${days} days</span>`;
+    }
+
+    function concertCard(c, { upcoming }) {
+      const setlist = Array.isArray(c.setlist) && c.setlist.length
+        ? `<details class="setlist"><summary>setlist (${c.setlist.length} songs)</summary><ol>${c.setlist.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol></details>`
+        : '';
+      const artistImg = c.artistImage
+        ? `<img class="concert-artist-img" src="${escapeHtml(c.artistImage)}" alt="${escapeHtml(c.artist || '')}" loading="lazy" onerror="this.style.display='none'" />`
+        : '';
+      const rating = c.rating
+        ? `<div class="rating">${'★'.repeat(c.rating)}${'☆'.repeat(5 - c.rating)}</div>`
+        : '';
+      const review = c.review || c.notes
+        ? `<div class="review">${escapeHtml(c.review || c.notes)}</div>`
+        : '';
+      const meta = [c.venue, c.city].filter(Boolean).map(escapeHtml).join(' · ');
+      const dateStr = fmtDate(c.date);
+      const right = upcoming
+        ? countdown(daysUntil(c.date))
+        : (c.tour ? `<span class="tour">${escapeHtml(c.tour)}</span>` : '');
+
+      return `
+        <article class="concert-card ${upcoming ? 'upcoming' : 'past'}">
+          ${artistImg}
+          <div class="concert-body">
+            <div class="concert-head">
+              <div>
+                <h3>${escapeHtml(c.title || c.artist || 'untitled show')}</h3>
+                ${c.artist && c.artist !== c.title ? `<div class="artist">${escapeHtml(c.artist)}</div>` : ''}
+              </div>
+              ${right}
+            </div>
+            <div class="concert-meta">
+              <span class="date">${escapeHtml(dateStr)}</span>
+              ${meta ? `<span class="dot">·</span><span>${meta}</span>` : ''}
+            </div>
+            ${rating}
+            ${review}
+            ${setlist}
+          </div>
+        </article>
+      `;
+    }
+
+    (async () => {
+      const upRoot = document.getElementById('upcoming-root');
+      const pastRoot = document.getElementById('past-root');
+      let items;
+      try {
+        const res = await fetch('../data/concerts.json');
+        if (!res.ok) throw 0;
+        items = await res.json();
+      } catch {
+        upRoot.innerHTML = pastRoot.innerHTML = '<p class="empty-state">no concerts yet — add some in Notion ♡</p>';
+        return;
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const upcoming = [];
+      const past = [];
+      for (const c of items) {
+        const d = parseLocalDate(c.date);
+        if (d && d >= today) upcoming.push(c);
+        else past.push(c);
+      }
+      upcoming.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      past.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+      upRoot.innerHTML = upcoming.length
+        ? upcoming.map(c => concertCard(c, { upcoming: true })).join('')
+        : '<p class="empty-state">no upcoming shows planned ♡</p>';
+      pastRoot.innerHTML = past.length
+        ? past.map(c => concertCard(c, { upcoming: false })).join('')
+        : '<p class="empty-state">no past shows logged yet ♡</p>';
+    })();
   </script>
 </body>
 </html>

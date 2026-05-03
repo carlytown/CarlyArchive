@@ -1,0 +1,103 @@
+/* Status feed — Twitter-ish microblog cards */
+
+.status-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.status {
+  background: var(--pink-cream);
+  border: 2px solid var(--plum);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  box-shadow: 3px 3px 0 var(--pink-baby);
+  position: relative;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.status:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--pink-baby);
+}
+
+.status-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.status-mood {
+  font-size: 1.4rem;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
+
+.status-text {
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--plum);
+  word-wrap: break-word;
+  flex: 1;
+}
+
+.status-body {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--plum-soft);
+  white-space: pre-wrap;
+}
+
+.status-tags {
+  margin-top: 0.5rem;
+}
+
+.status-tag {
+  display: inline-block;
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.78rem;
+  background: var(--pink-baby);
+  color: var(--plum);
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  margin-right: 0.25rem;
+}
+
+.status-time {
+  display: inline-block;
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.78rem;
+  color: var(--pink-magenta);
+}
+
+.status-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.status-mood-label {
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.78rem;
+  color: var(--plum-soft);
+  font-style: italic;
+}
+
+/* Compact variant for the home sidebar */
+.status-feed-compact .status {
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  box-shadow: 2px 2px 0 var(--pink-baby);
+}
+.status-feed-compact .status-text { font-size: 0.9rem; }
+.status-feed-compact .status-body { display: none; }
+.status-feed-compact .status-tags { display: none; }
+.status-feed-compact .status-mood { font-size: 1.1rem; }
+.status-feed-compact .status-time { font-size: 0.7rem; }
+.status-feed-compact .status-mood-label { display: none; }
+.status-feed-compact .status-meta { margin-top: 0.35rem; }

@@ -192,6 +192,10 @@ const server = http.createServer((req, res) => {
     }
     const ext = path.extname(filePath).toLowerCase();
     const type = MIMES[ext] || 'application/octet-stream';
+    // Cache static media so refreshes don't re-fetch them. HTML and JSON
+    // stay uncached so the soft-refresh loop still picks up new data.
+    const STATIC_EXTS = new Set(['.png','.jpg','.jpeg','.gif','.webp','.svg','.ico','.woff','.woff2','.ttf','.otf','.css','.js','.mjs']);
+    const cache = STATIC_EXTS.has(ext) ? 'public, max-age=3600' : 'no-store';
     if (ext === '.html') {
       const html = data.toString('utf8').replace('</body>', RELOAD_SCRIPT + '</body>');
       res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
@@ -199,7 +203,7 @@ const server = http.createServer((req, res) => {
     }
     res.writeHead(200, {
       'Content-Type': type,
-      'Cache-Control': 'no-store'
+      'Cache-Control': cache
     });
     res.end(data);
   });

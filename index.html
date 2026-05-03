@@ -7,6 +7,7 @@
   <meta name="description" content="A pink, sparkly archive of every book, album, show, game, concert, and trip I've loved." />
   <link rel="stylesheet" href="./css/theme.css" />
   <link rel="stylesheet" href="./css/music.css" />
+  <link rel="stylesheet" href="./css/statuses.css" />
 </head>
 <body>
   <div class="page">
@@ -17,6 +18,7 @@
 
     <nav class="nav" aria-label="Main">
       <a href="./index.html">♡ home</a>
+      <a href="./pages/statuses.html">📝 statuses</a>
       <a href="./pages/books.html">📚 books</a>
       <a href="./pages/manga.html">📖 manga</a>
       <a href="./pages/cds.html">💿 cds</a>
@@ -37,6 +39,10 @@
         <h3>♡ now playing</h3>
         <div id="home-now-playing">
           <div class="lf-now lf-now-idle"><span class="lf-now-icon">♫</span><div><div class="lf-now-label">loading…</div></div></div>
+        </div>
+        <h3>♡ latest statuses</h3>
+        <div id="home-statuses" class="status-feed status-feed-compact">
+          <p class="empty-state">loading…</p>
         </div>
         <h3>♡ currently</h3>
         <ul style="padding-left:1.1rem;">
@@ -68,9 +74,11 @@
   <script type="module">
     import { injectFooter, highlightNav, rel } from './js/layout.js';
     import { renderNowPlayingWidget } from './js/music.js';
+    import { renderStatuses } from './js/statuses.js';
     highlightNav();
     injectFooter();
     renderNowPlayingWidget('#home-now-playing', './');
+    renderStatuses('#home-statuses', { limit: 3, emptyMsg: 'no statuses yet ♡' });
 
     // Try to load combined data and show 8 most recent
     (async () => {
@@ -84,8 +92,11 @@
         const recent = [];
         const PER_CAT = 2;
         const MAX = 12;
+        // CDs are an old, mostly-static collection — exclude from "recently added".
+        const EXCLUDE = new Set(['cds']);
         for (const i of items) {
           const c = i.category || 'other';
+          if (EXCLUDE.has(c)) continue;
           if ((perCat[c] || 0) >= PER_CAT) continue;
           perCat[c] = (perCat[c] || 0) + 1;
           recent.push(i);
@@ -100,8 +111,10 @@
           a.className = 'card';
           a.href = `./pages/${i.category}.html`;
           a.style.textDecoration = 'none';
+          // Concerts use artistImage instead of cover.
+          const img = i.cover || i.artistImage || '';
           a.innerHTML = `
-            <img class="cover" src="${i.cover ? (/^https?:/.test(i.cover) ? i.cover : './' + i.cover) : ''}" alt="" onerror="this.style.visibility='hidden'" loading="lazy" />
+            <img class="cover" src="${img ? (/^https?:/.test(img) ? img : './' + img) : ''}" alt="" onerror="this.style.visibility='hidden'" loading="lazy" />
             <div class="title">${i.title || ''}</div>
             <div class="meta">${i.category}</div>
           `;

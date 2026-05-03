@@ -114,6 +114,14 @@ export function getProp(page, name) {
   return found ? props[found] : null;
 }
 
+// Find the single title property of a Notion page (every DB has exactly one).
+export function readTitle(page) {
+  const props = page.properties || {};
+  const titleKey = Object.keys(props).find(k => props[k]?.type === 'title');
+  if (!titleKey) return null;
+  return plainText(props[titleKey].title) || null;
+}
+
 export function readProp(page, name) {
   const p = getProp(page, name);
   if (!p) return null;
@@ -141,6 +149,16 @@ export function pageCover(page) {
   const c = page.cover;
   if (!c) return null;
   return c.external?.url || c.file?.url || null;
+}
+
+// Read all URLs from a Notion files & media property (e.g. photo galleries).
+// Notion file URLs expire after ~1hr so the build needs to re-fetch regularly.
+export function readFiles(page, name) {
+  const p = getProp(page, name);
+  if (!p || p.type !== 'files') return [];
+  return (p.files || [])
+    .map(f => f.file?.url || f.external?.url || null)
+    .filter(Boolean);
 }
 
 // Pick first non-null

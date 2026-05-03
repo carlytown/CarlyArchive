@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>cds ♡ Carly's Archive</title>
+  <title>statuses ♡ Carly's Archive</title>
   <link rel="stylesheet" href="../css/theme.css" />
+  <link rel="stylesheet" href="../css/statuses.css" />
 </head>
 <body>
   <div class="page">
     <header class="banner">
-      <h1>💿 cds</h1>
-      <div class="tagline">~ albums i own & love ~</div>
+      <h1>📝 statuses</h1>
+      <div class="tagline">~ little thoughts &amp; updates ~</div>
     </header>
     <nav class="nav" aria-label="Main">
       <a href="../index.html">♡ home</a>
@@ -28,22 +29,17 @@
       <a href="./stats.html">✨ stats</a>
     </nav>
     <main class="main">
-      <div id="list-controls" class="controls"></div>
-      <div id="list-root"></div>
+      <div id="status-root" class="status-feed">
+        <p class="empty-state">loading…</p>
+      </div>
     </main>
   </div>
   <script src="../js/sparkle.js"></script>
   <script type="module">
     import { injectFooter, highlightNav } from '../js/layout.js';
-    import { initListView } from '../js/list-view.js';
+    import { renderStatuses } from '../js/statuses.js';
     highlightNav(); injectFooter();
-    initListView({
-      category: 'cds',
-      sortable: ['dateAdded', 'rating', 'title', 'year', 'playcount'],
-      filterable: ['genre', 'artist'],
-      fields: { cardMeta: ['artist', 'year', 'playcount'] },
-      seasonal: { tagField: 'tags', tags: ['holiday'], months: [11, 12] }
-    });
+    renderStatuses('#status-root');
   </script>
 </body>
 </html>

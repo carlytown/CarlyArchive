@@ -13,7 +13,7 @@ import path from 'node:path';
 import {
   ROOT, DATA_DIR,
   ensureDir, hash, readCache, writeCache,
-  readProp, pageCover, pick
+  readProp, readTitle, pageCover, pick
 } from './lib/utils.mjs';
 
 import { enrichBook } from './enrichers/books.mjs';
@@ -46,7 +46,8 @@ const CATEGORIES = {
   tv:       { mapper: mapTv,      enricher: enrichTv },
   movies:   { mapper: mapMovie,   enricher: enrichMovie },
   games:    { mapper: mapGame,    enricher: enrichGame },
-  travel:   { mapper: mapTravel,  enricher: null }
+  travel:   { mapper: mapTravel,  enricher: null },
+  statuses: { mapper: mapStatus,  enricher: null }
 };
 
 async function queryAll(databaseId) {
@@ -69,7 +70,9 @@ async function queryAll(databaseId) {
 function baseFields(page) {
   return {
     id: page.id,
-    title: readProp(page, 'Title') || readProp(page, 'Name') || 'Untitled',
+    // Look up the title in standard places, then fall back to whatever
+    // property is the title type (every DB has exactly one).
+    title: readProp(page, 'Title') || readProp(page, 'Name') || readTitle(page) || 'Untitled',
     rating: readProp(page, 'Rating'),
     review: readProp(page, 'Notes') || readProp(page, 'Review'),
     tags: readProp(page, 'Tags') || [],
@@ -144,7 +147,7 @@ function mapMovie(page) {
   return { ...baseFields(page), year: readProp(page, 'Year') };
 }
 function mapGame(page) {
-  return { ...baseFields(page), platform: readProp(page, 'Platform') };
+  return { ...baseFields(page), platform: readProp(page, 'Platform') || readProp(page, 'Console') };
 }
 function mapTravel(page) {
   return {
@@ -152,6 +155,19 @@ function mapTravel(page) {
     place: readProp(page, 'Place') || readProp(page, 'Title'),
     country: readProp(page, 'Country'),
     date: readProp(page, 'Date') || readProp(page, 'Dates')
+  };
+}
+function mapStatus(page) {
+  // Status post: title is the message, Posted is the timestamp.
+  // Body is an optional longer rich_text field for multi-line posts.
+  return {
+    id: page.id,
+    text: readProp(page, 'status') || readProp(page, 'Status') || readProp(page, 'Name') || readProp(page, 'Title') || '',
+    body: readProp(page, 'body') || readProp(page, 'Body') || null,
+    mood: readProp(page, 'mood') || readProp(page, 'Mood') || null,
+    emoji: readProp(page, 'emoji') || readProp(page, 'Emoji') || null,
+    tags: readProp(page, 'Tags') || [],
+    posted: readProp(page, 'Date') || readProp(page, 'Posted') || page.created_time || null
   };
 }
 
@@ -226,6 +242,16 @@ async function processCategory(category, dbId) {
     }
 
     merged.category = category;
+    // Normalize tags + genre to lowercase so the stats page doesn't double-count
+    // "Supernatural" vs "supernatural".
+    if (Array.isArray(merged.tags)) {
+      merged.tags = [...new Set(merged.tags.map(t => String(t).toLowerCase()))];
+    }
+    if (Array.isArray(merged.genre)) {
+      merged.genre = [...new Set(merged.genre.map(g => String(g).toLowerCase()))];
+    } else if (typeof merged.genre === 'string') {
+      merged.genre = merged.genre.toLowerCase();
+    }
     items.push(merged);
   }
 
@@ -265,7 +291,9 @@ async function main() {
   for (const [category, dbId] of Object.entries(databases)) {
     if (category.startsWith('_')) continue;
     const items = await processCategory(category, dbId);
-    all.push(...items);
+    // Statuses live in their own feed (data/statuses.json) — don't mix them
+    // into the cross-category "recently added" / stats rollups.
+    if (category !== 'statuses') all.push(...items);
   }
 
   await fs.writeFile(path.join(DATA_DIR, 'all.json'), JSON.stringify(all, null, 2));

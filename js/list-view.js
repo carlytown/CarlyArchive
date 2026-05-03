@@ -204,8 +204,13 @@ function openModal(item, fields) {
     });
   }
   const modal = backdrop.querySelector('.modal');
-  const cover = item.cover ? `<img class="cover-large" src="${rel(item.cover)}" alt="Cover of ${escapeAttr(item.title)}" />` : '';
-  const detailFields = fields.modal || Object.keys(item).filter(k => !['id', 'title', 'cover', 'review', 'notes', 'description'].includes(k));
+  const modalFallbackAttr = Array.isArray(item.coverFallbacks) && item.coverFallbacks.length
+    ? ` data-fallbacks='${escapeAttr(JSON.stringify(item.coverFallbacks))}'`
+    : '';
+  const cover = item.cover
+    ? `<img class="cover-large" src="${rel(item.cover)}" alt="Cover of ${escapeAttr(item.title)}"${modalFallbackAttr} onerror="window.__coverFallback&&window.__coverFallback(this)" />`
+    : '';
+  const detailFields = fields.modal || Object.keys(item).filter(k => !['id', 'title', 'cover', 'coverFallbacks', 'review', 'notes', 'description'].includes(k));
   const dl = detailFields.map(f => {
     const v = item[f];
     if (v == null || v === '') return '';

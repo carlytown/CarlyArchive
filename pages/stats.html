@@ -14,6 +14,7 @@
     </header>
     <nav class="nav" aria-label="Main">
       <a href="../index.html">♡ home</a>
+      <a href="./statuses.html">📝 statuses</a>
       <a href="./books.html">📚 books</a>
       <a href="./manga.html">📖 manga</a>
       <a href="./cds.html">💿 cds</a>
@@ -37,6 +38,7 @@
       <hr class="cute" />
       <h2>top tags / genres</h2>
       <div id="top-tags"></div>
+      <div id="tag-results" hidden></div>
     </main>
   </div>
   <script src="../js/sparkle.js"></script>
@@ -86,10 +88,71 @@
       }
 
       const topTags = document.getElementById('top-tags');
+      const tagResults = document.getElementById('tag-results');
+
+      // Lazy-load all items once a tag is clicked.
+      let allItems = null;
+      async function loadAll() {
+        if (allItems) return allItems;
+        try {
+          const r = await fetch('../data/all.json');
+          if (!r.ok) throw 0;
+          allItems = await r.json();
+        } catch { allItems = []; }
+        return allItems;
+      }
+
+      function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      }
+
+      function tagMatches(item, tag) {
+        const t = tag.toLowerCase();
+        if (Array.isArray(item.tags) && item.tags.some(x => String(x).toLowerCase() === t)) return true;
+        if (Array.isArray(item.genre) && item.genre.some(x => String(x).toLowerCase() === t)) return true;
+        return false;
+      }
+
+      async function showTag(tag) {
+        const items = await loadAll();
+        const matches = items.filter(i => tagMatches(i, tag));
+        tagResults.hidden = false;
+        tagResults.innerHTML = `
+          <div style="margin-top:1rem;padding:1rem;background:var(--pink-baby,#ffe6f2);border:2px dashed var(--pink-magenta,#ff66b2);border-radius:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
+              <h3 style="margin:0;">${escapeHtml(tag)} <span style="font-weight:normal;opacity:0.7;">(${matches.length})</span></h3>
+              <button id="tag-close" style="background:transparent;border:none;font-size:1.2rem;cursor:pointer;" aria-label="Close">✕</button>
+            </div>
+            ${matches.length === 0
+              ? '<p class="empty-state">no items found.</p>'
+              : `<ul style="list-style:none;padding:0;margin:0;display:grid;gap:0.4rem;">
+                  ${matches.map(i => `
+                    <li style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem;background:white;border-radius:8px;">
+                      ${i.cover ? `<img src="${/^https?:/.test(i.cover) ? i.cover : '../' + i.cover}" alt="" loading="lazy" style="width:40px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0;" onerror="this.style.visibility='hidden'" />` : '<span style="width:40px;height:40px;flex-shrink:0;"></span>'}
+                      <a href="../pages/${i.category}.html" style="flex:1;text-decoration:none;color:inherit;">
+                        <strong>${escapeHtml(i.title || '')}</strong>
+                        <span style="opacity:0.6;font-size:0.85rem;"> · ${ICONS[i.category] || ''} ${escapeHtml(i.category)}</span>
+                      </a>
+                    </li>
+                  `).join('')}
+                </ul>`}
+          </div>
+        `;
+        tagResults.querySelector('#tag-close')?.addEventListener('click', () => {
+          tagResults.hidden = true;
+          tagResults.innerHTML = '';
+        });
+        tagResults.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
       if (stats.topTags && stats.topTags.length) {
         topTags.innerHTML = stats.topTags
-          .map(([t, n]) => `<span style="display:inline-block;background:var(--pink-baby);border:2px dashed var(--pink-magenta);border-radius:12px;padding:0.2rem 0.6rem;margin:0.2rem;">${t} (${n})</span>`)
+          .map(([t, n]) => `<button type="button" data-tag="${escapeHtml(t)}" style="display:inline-block;background:var(--pink-baby);border:2px dashed var(--pink-magenta);border-radius:12px;padding:0.2rem 0.6rem;margin:0.2rem;font:inherit;cursor:pointer;">${escapeHtml(t)} (${n})</button>`)
           .join('');
+        topTags.addEventListener('click', e => {
+          const btn = e.target.closest('button[data-tag]');
+          if (btn) showTag(btn.dataset.tag);
+        });
       } else {
         topTags.innerHTML = '<p class="empty-state">no tags yet.</p>';
       }
