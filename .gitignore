@@ -4,3 +4,9 @@ node_modules/
 scripts/.cache/
 .DS_Store
 *.log
+
+# Build artefacts — regenerated on every CI deploy from Notion + APIs.
+# Locally, run `npm run build` to populate them.
+data/
+assets/covers/
+assets/lastfm/

@@ -165,3 +165,50 @@ body[data-category="music"] .card img.cover {
   }
   .lf-bar { display: none; }
 }
+
+/* ---- Period tabs ---- */
+.lf-period-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+.lf-period-label {
+  font-family: var(--font-pixel, monospace);
+  color: var(--plum-soft);
+  font-size: 0.85rem;
+}
+.lf-period-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.lf-period-tab {
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.85rem;
+  padding: 0.25rem 0.7rem;
+  background: var(--pink-cream);
+  color: var(--plum);
+  border: 2px solid var(--plum);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--pink-baby);
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+.lf-period-tab:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--pink-baby);
+}
+.lf-period-tab[aria-pressed="true"] {
+  background: var(--pink-hot);
+  color: #fff;
+  box-shadow: 2px 2px 0 var(--plum);
+}
+.lf-period-suffix {
+  font-size: 0.75em;
+  color: var(--pink-magenta);
+  font-family: var(--font-pixel, monospace);
+  font-weight: 400;
+  margin-left: 0.4rem;
+}

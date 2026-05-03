@@ -40,7 +40,8 @@
       category: 'cds',
       sortable: ['dateAdded', 'rating', 'title', 'year', 'playcount'],
       filterable: ['genre', 'artist'],
-      fields: { cardMeta: ['artist', 'year', 'playcount'] }
+      fields: { cardMeta: ['artist', 'year', 'playcount'] },
+      seasonal: { tagField: 'tags', tags: ['holiday'], months: [11, 12] }
     });
   </script>
 </body>

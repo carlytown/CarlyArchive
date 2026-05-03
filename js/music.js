@@ -166,18 +166,49 @@ export async function renderMusicPage(base = '') {
   np.innerHTML = nowPlayingCard(cachedTrack, base);
   startLivePolling(np, base, cachedTrack);
 
-  document.getElementById('top-albums').innerHTML =
-    data.topAlbums.map(a => albumCard(a, base)).join('');
+  // Period tabs
+  const periods = data.periods || [{ key: 'overall', label: 'all time' }];
+  const tabsEl = document.getElementById('period-tabs');
+  const STORE_KEY = 'lf-period';
+  const initial = localStorage.getItem(STORE_KEY) || 'overall';
+  const validInitial = periods.find(p => p.key === initial)?.key || 'overall';
 
-  const max = Math.max(...data.topArtists.map(a => a.playcount), 1);
-  document.getElementById('top-artists').innerHTML = data.topArtists.map((a, i) => `
-    <li class="lf-artist-row">
-      <span class="lf-rank">#${i + 1}</span>
-      <a class="lf-artist-name" href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.name)}</a>
-      <span class="lf-bar"><span class="lf-bar-fill" style="width:${(a.playcount / max * 100).toFixed(1)}%"></span></span>
-      <span class="lf-playcount">${a.playcount.toLocaleString()}</span>
-    </li>
+  tabsEl.innerHTML = periods.map(p => `
+    <button type="button" class="lf-period-tab" data-period="${p.key}" aria-pressed="${p.key === validInitial}">${p.label}</button>
   `).join('');
+
+  function renderPeriod(key) {
+    const slice = data.byPeriod?.[key] || { topArtists: data.topArtists, topAlbums: data.topAlbums };
+    const label = periods.find(p => p.key === key)?.label || '';
+    document.querySelectorAll('[data-period-label]').forEach(el => el.textContent = `(${label})`);
+
+    document.getElementById('top-albums').innerHTML =
+      slice.topAlbums.map(a => albumCard(a, base)).join('');
+
+    const max = Math.max(...slice.topArtists.map(a => a.playcount), 1);
+    document.getElementById('top-artists').innerHTML = slice.topArtists.map((a, i) => `
+      <li class="lf-artist-row">
+        <span class="lf-rank">#${i + 1}</span>
+        <a class="lf-artist-name" href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.name)}</a>
+        <span class="lf-bar"><span class="lf-bar-fill" style="width:${(a.playcount / max * 100).toFixed(1)}%"></span></span>
+        <span class="lf-playcount">${a.playcount.toLocaleString()}</span>
+      </li>
+    `).join('');
+
+    tabsEl.querySelectorAll('.lf-period-tab').forEach(btn => {
+      btn.setAttribute('aria-pressed', btn.dataset.period === key ? 'true' : 'false');
+    });
+  }
+
+  tabsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.lf-period-tab');
+    if (!btn) return;
+    const key = btn.dataset.period;
+    localStorage.setItem(STORE_KEY, key);
+    renderPeriod(key);
+  });
+
+  renderPeriod(validInitial);
 
   document.getElementById('recent-scrobbles').innerHTML = data.recent.map(t => `
     <li class="lf-recent-row">

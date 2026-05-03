@@ -30,11 +30,13 @@
     <main class="main">
       <section id="now-playing-section" class="lf-section"></section>
       <section class="lf-section">
-        <h2>♡ top albums (all time)</h2>
+        <div class="lf-period-bar">
+          <span class="lf-period-label">show:</span>
+          <div id="period-tabs" class="lf-period-tabs"></div>
+        </div>
+        <h2>♡ top albums <span class="lf-period-suffix" data-period-label></span></h2>
         <div id="top-albums" class="card-grid lf-album-grid"></div>
-      </section>
-      <section class="lf-section">
-        <h2>♡ top artists (all time)</h2>
+        <h2 style="margin-top:2rem;">♡ top artists <span class="lf-period-suffix" data-period-label></span></h2>
         <ol id="top-artists" class="lf-artist-list"></ol>
       </section>
       <section class="lf-section">

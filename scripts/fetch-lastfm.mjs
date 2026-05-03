@@ -10,7 +10,7 @@ import 'dotenv/config';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
-  ROOT, ensureDir, downloadFile, hash, fetchJson, rateLimit
+  ROOT, ensureDir, fetchJson, rateLimit
 } from './lib/utils.mjs';
 
 const API_KEY = process.env.LASTFM_API_KEY;
@@ -41,20 +41,6 @@ function bestImage(images) {
   return null;
 }
 
-async function localiseImage(url, kind, key) {
-  if (!url) return null;
-  const ext = (url.match(/\.(jpe?g|png|gif|webp)(\?|$)/i)?.[1] || 'jpg').toLowerCase();
-  const local = `assets/lastfm/${kind}/${hash(key)}.${ext}`;
-  const dest = path.join(ROOT, local);
-  try {
-    await downloadFile(url, dest);
-    return local;
-  } catch (e) {
-    console.warn(`  ! lastfm cover failed (${kind}/${key}): ${e.message}`);
-    return null;
-  }
-}
-
 function normaliseTrack(t) {
   return {
     name:    t.name,
@@ -74,37 +60,30 @@ async function fetchRecent() {
   return tracks;
 }
 
-async function fetchTopArtists() {
-  const data = await lfm('user.gettopartists', { period: 'overall', limit: 20 });
+async function fetchTopArtists(period = 'overall') {
+  const data = await lfm('user.gettopartists', { period, limit: 20 });
   const artists = data?.topartists?.artist || [];
-  const out = [];
-  for (const a of artists) {
-    const img = bestImage(a.image); // last.fm artist images are usually placeholders nowadays
-    out.push({
-      name: a.name,
-      playcount: Number(a.playcount),
-      url: a.url,
-      image: img ? await localiseImage(img, 'artists', a.name) : null
-    });
-  }
-  return out;
+  // Last.fm deprecated artist images in 2019 — they all return the same grey
+  // star placeholder. Skip the download entirely; the UI uses text only.
+  return artists.map(a => ({
+    name: a.name,
+    playcount: Number(a.playcount),
+    url: a.url,
+    image: null
+  }));
 }
 
-async function fetchTopAlbums() {
-  const data = await lfm('user.gettopalbums', { period: 'overall', limit: 24 });
+async function fetchTopAlbums(period = 'overall') {
+  const data = await lfm('user.gettopalbums', { period, limit: 24 });
   const albums = data?.topalbums?.album || [];
-  const out = [];
-  for (const a of albums) {
-    const img = bestImage(a.image);
-    out.push({
-      name: a.name,
-      artist: a.artist?.name || '',
-      playcount: Number(a.playcount),
-      url: a.url,
-      image: img ? await localiseImage(img, 'albums', `${a.artist?.name}__${a.name}`) : null
-    });
-  }
-  return out;
+  // Hotlink directly from Last.fm's CDN — stable, fast, and avoids repo bloat.
+  return albums.map(a => ({
+    name: a.name,
+    artist: a.artist?.name || '',
+    playcount: Number(a.playcount),
+    url: a.url,
+    image: bestImage(a.image)
+  }));
 }
 
 async function mergePlaycountsIntoCds(topAlbums) {
@@ -138,27 +117,46 @@ async function mergePlaycountsIntoCds(topAlbums) {
 
 async function main() {
   console.log(`→ lastfm: fetching for ${USER}…`);
-  await ensureDir(path.join(ROOT, 'assets', 'lastfm', 'albums'));
-  await ensureDir(path.join(ROOT, 'assets', 'lastfm', 'artists'));
 
-  const [recent, topArtists, topAlbums] = await Promise.all([
-    fetchRecent(),
-    fetchTopArtists(),
-    fetchTopAlbums()
-  ]);
+  const PERIODS = [
+    { key: '7day',     label: 'last week' },
+    { key: '1month',   label: 'last month' },
+    { key: '3month',   label: 'last 3 months' },
+    { key: '6month',   label: 'last 6 months' },
+    { key: '12month',  label: 'last year' },
+    { key: 'overall',  label: 'all time' }
+  ];
+
+  const recent = await fetchRecent();
+
+  // Sequential to be polite to the API.
+  const byPeriod = {};
+  for (const p of PERIODS) {
+    const [topArtists, topAlbums] = [
+      await fetchTopArtists(p.key),
+      await fetchTopAlbums(p.key)
+    ];
+    byPeriod[p.key] = { topArtists, topAlbums };
+    console.log(`  ✓ ${p.key}: ${topArtists.length} artists, ${topAlbums.length} albums`);
+  }
+
+  const overall = byPeriod.overall;
 
   const out = {
     user: USER,
     fetchedAt: new Date().toISOString(),
     nowPlaying: recent.find(t => t.nowPlaying) || null,
     recent: recent.filter(t => !t.nowPlaying).slice(0, 10),
-    topArtists,
-    topAlbums
+    periods: PERIODS,
+    byPeriod,
+    // legacy keys (older clients) — same as overall
+    topArtists: overall.topArtists,
+    topAlbums:  overall.topAlbums
   };
 
   await ensureDir(path.join(ROOT, 'data'));
   await fs.writeFile(path.join(ROOT, 'data', 'lastfm.json'), JSON.stringify(out, null, 2));
-  console.log(`  ✓ wrote data/lastfm.json (${recent.length} recent, ${topArtists.length} artists, ${topAlbums.length} albums)`);
+  console.log(`  ✓ wrote data/lastfm.json (${recent.length} recent, ${PERIODS.length} periods)`);
 
   // Public config so the browser can ping last.fm directly for live now-playing.
   // The read-only API key is safe to expose; it's the same scope a last.fm
@@ -169,7 +167,7 @@ async function main() {
   );
   console.log(`  ✓ wrote data/lastfm-config.json`);
 
-  await mergePlaycountsIntoCds(topAlbums);
+  await mergePlaycountsIntoCds(overall.topAlbums);
 }
 
 main().catch(err => {

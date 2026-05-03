@@ -11,9 +11,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import {
-  ROOT, DATA_DIR, COVERS_DIR,
+  ROOT, DATA_DIR,
   ensureDir, hash, readCache, writeCache,
-  downloadFile, readProp, pageCover, pick
+  readProp, pageCover, pick
 } from './lib/utils.mjs';
 
 import { enrichBook } from './enrichers/books.mjs';
@@ -82,15 +82,19 @@ function baseFields(page) {
 }
 
 // Override IDs may be pasted as full URLs or with whitespace — extract the
-// last numeric/slug segment so the user doesn't have to think about it.
+// canonical ID for the relevant API:
+//   - MusicBrainz: 36-char UUID (release MBID)
+//   - MAL / others: numeric ID
 function cleanOverrideId(raw) {
   if (!raw) return null;
   const s = String(raw).trim();
   if (!s) return null;
-  // If it looks like a URL, take the last meaningful path segment that's numeric.
+  // MusicBrainz / generic UUID anywhere in the string.
+  const uuid = s.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  if (uuid) return uuid[0].toLowerCase();
+  // URL with a numeric ID (MAL-style /anime/38680/Title).
   if (/^https?:\/\//i.test(s)) {
     const parts = s.split(/[?#]/)[0].split('/').filter(Boolean);
-    // prefer the first numeric part (MAL-style /anime/38680/Title, /manga/102/Title)
     const num = parts.find(p => /^\d+$/.test(p));
     if (num) return num;
     return parts[parts.length - 1] || null;
@@ -205,18 +209,19 @@ async function processCategory(category, dbId) {
     delete merged.notionCover;
     delete merged.overrideId;
 
-    // Cover: prefer enriched (stable), fall back to Notion (expiring).
+    // Cover: prefer enriched (stable remote URL), fall back to Notion (which
+    // expires after ~1hr — only used if you upload a cover directly to a
+    // Notion page, which we don't do). We hotlink instead of downloading,
+    // so no images get committed to the repo. Fallback URLs (e.g. iTunes
+    // when CoverArtArchive 404s) are persisted so the browser can retry.
     const coverUrl = pick(enriched._coverUrl, base.notionCover);
+    const fallbackUrls = enriched._coverFallbackUrls || [];
     delete merged._coverUrl;
+    delete merged._coverFallbackUrls;
     if (coverUrl) {
-      try {
-        const ext = (coverUrl.match(/\.(jpe?g|png|gif|webp)(\?|$)/i)?.[1] || 'jpg').toLowerCase();
-        const safeId = page.id.replace(/-/g, '');
-        const localPath = path.join('assets', 'covers', category, `${safeId}.${ext}`);
-        await downloadFile(coverUrl, path.join(ROOT, localPath));
-        merged.cover = localPath.replace(/\\/g, '/');
-      } catch (e) {
-        console.warn(`  ! cover download failed for "${base.title}": ${e.message}`);
+      merged.cover = coverUrl;
+      if (fallbackUrls.length) {
+        merged.coverFallbacks = fallbackUrls;
       }
     }
 
@@ -255,7 +260,6 @@ function buildStats(allItems) {
 
 async function main() {
   await ensureDir(DATA_DIR);
-  await ensureDir(COVERS_DIR);
 
   const all = [];
   for (const [category, dbId] of Object.entries(databases)) {

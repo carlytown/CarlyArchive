@@ -79,7 +79,18 @@
         if (!res.ok) return;
         const items = await res.json();
         items.sort((a, b) => (b.dateFinished || b.dateAdded || '').localeCompare(a.dateFinished || a.dateAdded || ''));
-        const recent = items.slice(0, 8);
+        // Limit to 2 per category so the section stays diverse.
+        const perCat = {};
+        const recent = [];
+        const PER_CAT = 2;
+        const MAX = 12;
+        for (const i of items) {
+          const c = i.category || 'other';
+          if ((perCat[c] || 0) >= PER_CAT) continue;
+          perCat[c] = (perCat[c] || 0) + 1;
+          recent.push(i);
+          if (recent.length >= MAX) break;
+        }
         if (!recent.length) return;
         const root = document.getElementById('recent-root');
         const grid = document.createElement('div');
@@ -90,7 +101,7 @@
           a.href = `./pages/${i.category}.html`;
           a.style.textDecoration = 'none';
           a.innerHTML = `
-            <img class="cover" src="${i.cover ? './' + i.cover : ''}" alt="" onerror="this.style.visibility='hidden'" loading="lazy" />
+            <img class="cover" src="${i.cover ? (/^https?:/.test(i.cover) ? i.cover : './' + i.cover) : ''}" alt="" onerror="this.style.visibility='hidden'" loading="lazy" />
             <div class="title">${i.title || ''}</div>
             <div class="meta">${i.category}</div>
           `;

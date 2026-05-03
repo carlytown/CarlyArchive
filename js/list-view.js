@@ -3,8 +3,24 @@
 
 import { rel } from './layout.js';
 
+// Global cover-image fallback walker. When a hotlinked cover 404s, try the
+// next URL in the data-fallbacks list (set on the <img> element). Hide on exhaustion.
+if (typeof window !== 'undefined' && !window.__coverFallback) {
+  window.__coverFallback = (img) => {
+    let list;
+    try { list = JSON.parse(img.dataset.fallbacks || '[]'); } catch { list = []; }
+    const next = list.shift();
+    img.dataset.fallbacks = JSON.stringify(list);
+    if (next) {
+      img.src = next;
+    } else {
+      img.style.visibility = 'hidden';
+    }
+  };
+}
+
 export async function initListView(opts) {
-  const { category, fields = {}, sortable = [], filterable = [] } = opts;
+  const { category, fields = {}, sortable = [], filterable = [], seasonal = null } = opts;
   const container = document.getElementById('list-root');
   container.dataset.category = category;
   document.body.dataset.category = category;
@@ -22,6 +38,25 @@ export async function initListView(opts) {
         Add some entries in Notion and run the build script.
       </p>`;
     return;
+  }
+
+  // Seasonal hiding — e.g. Christmas albums only show in Nov/Dec.
+  // seasonal = { tagField, tags: ['holiday'], months: [11, 12] }
+  let seasonalHidden = 0;
+  if (seasonal && Array.isArray(seasonal.months) && seasonal.months.length) {
+    const now = new Date().getMonth() + 1; // 1..12
+    if (!seasonal.months.includes(now)) {
+      const tagSet = new Set((seasonal.tags || []).map(t => String(t).toLowerCase()));
+      const field = seasonal.tagField || 'tags';
+      const before = items.length;
+      items = items.filter(it => {
+        const v = it[field];
+        if (!v) return true;
+        const list = Array.isArray(v) ? v : [v];
+        return !list.some(t => tagSet.has(String(t).toLowerCase()));
+      });
+      seasonalHidden = before - items.length;
+    }
   }
 
   if (!items.length) {
@@ -127,7 +162,11 @@ function makeCard(item, fields) {
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
   card.setAttribute('aria-label', `Open details for ${item.title}`);
-  const cover = item.cover ? `<img class="cover" src="${rel(item.cover)}" alt="Cover of ${escapeAttr(item.title)}" loading="lazy" onerror="this.style.visibility='hidden'" />`
+  const fallbackAttr = Array.isArray(item.coverFallbacks) && item.coverFallbacks.length
+    ? ` data-fallbacks='${escapeAttr(JSON.stringify(item.coverFallbacks))}'`
+    : '';
+  const cover = item.cover
+    ? `<img class="cover" src="${rel(item.cover)}" alt="Cover of ${escapeAttr(item.title)}" loading="lazy"${fallbackAttr} onerror="window.__coverFallback&&window.__coverFallback(this)" />`
     : `<img class="cover" src="" alt="" onerror="this.style.visibility='hidden'" />`;
   const meta = (fields.cardMeta || []).map(f => {
     const v = item[f];

@@ -36,6 +36,9 @@ export function injectFooter() {
 // Resolve a path relative to the site root regardless of whether we're at
 // /index.html or /pages/foo.html.
 export function rel(path) {
+  if (!path) return path;
+  // Pass through absolute URLs and protocol-relative URLs untouched.
+  if (/^(https?:)?\/\//i.test(path) || path.startsWith('data:')) return path;
   const prefix = location.pathname.includes('/pages/') ? '../' : './';
   return prefix + path;
 }
