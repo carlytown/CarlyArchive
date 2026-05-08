@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-last-updated="2026-05-03">
+<html lang="en" data-last-updated="2026-05-06">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -27,6 +27,7 @@
       <a href="./pages/tv.html">📺 tv</a>
       <a href="./pages/movies.html">🎬 movies</a>
       <a href="./pages/games.html">🎮 games</a>
+      <a href="./pages/characters.html">💕 characters</a>
       <a href="./pages/travel.html">✈️ travel</a>
       <a href="./pages/music.html">🎧 music</a>
       <a href="./pages/stats.html">✨ stats</a>
@@ -45,9 +46,9 @@
           <p class="empty-state">loading…</p>
         </div>
         <h3>♡ currently</h3>
-        <ul style="padding-left:1.1rem;">
-          <li>📖 reading: <em>tbd</em></li>
-          <li>📺 watching: <em>tbd</em></li>
+        <ul id="home-currently" style="padding-left:1.1rem;">
+          <li>📖 reading: <em>loading…</em></li>
+          <li>📺 watching: <em>loading…</em></li>
         </ul>
         <h3>♡ stickers</h3>
         <div class="sticker-row" aria-hidden="true">
@@ -80,23 +81,65 @@
     renderNowPlayingWidget('#home-now-playing', './');
     renderStatuses('#home-statuses', { limit: 3, emptyMsg: 'no statuses yet ♡' });
 
+    // ♡ currently — pull in-progress books/manga and anime/tv from data files.
+    (async () => {
+      const isReading = s => /^(reading|in progress|currently reading)$/i.test(s || '');
+      const isWatching = s => /^(watching|in progress|currently watching)$/i.test(s || '');
+      async function load(cat) {
+        try { const r = await fetch(`./data/${cat}.json`); return r.ok ? await r.json() : []; }
+        catch { return []; }
+      }
+      const [books, manga, anime, tv] = await Promise.all([load('books'), load('manga'), load('anime'), load('tv')]);
+      const reading = [...books, ...manga].filter(i => isReading(i.status));
+      const watching = [...anime, ...tv].filter(i => isWatching(i.status));
+      const fmt = list => list.length
+        ? list.map(i => `<a href="./pages/${i.category}.html">${i.title}</a>`).join(', ')
+        : '<em>nothing right now</em>';
+      const ul = document.getElementById('home-currently');
+      if (ul) ul.innerHTML = `
+        <li>📖 reading: ${fmt(reading)}</li>
+        <li>📺 watching: ${fmt(watching)}</li>
+      `;
+    })();
+
     // Try to load combined data and show 8 most recent
     (async () => {
       try {
         const res = await fetch('./data/all.json');
         if (!res.ok) return;
         const items = await res.json();
-        items.sort((a, b) => (b.dateFinished || b.dateAdded || '').localeCompare(a.dateFinished || a.dateAdded || ''));
+        const today = new Date();
+        const todayStr = today.toISOString().slice(0, 10);
+        const weekMs = 7 * 24 * 60 * 60 * 1000;
+        // Concerts only show if attended in the last 7 days OR happening in the next 7 days.
+        function concertWithinWindow(i) {
+          if (!i.date) return false;
+          const d = new Date(i.date + 'T00:00:00');
+          const diff = Math.abs(d - today);
+          return diff <= weekMs;
+        }
+        function sortKey(i) {
+          if (i.category === 'concerts' && i.date) {
+            if (i.date >= todayStr) {
+              const inv = String(99999999 - Number(i.date.replace(/-/g, ''))).padStart(8, '0');
+              return `2_${inv}`;
+            }
+            return `1_${i.date}`;
+          }
+          return `1_${i.dateFinished || i.dateAdded || ''}`;
+        }
+        items.sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
         // Limit to 2 per category so the section stays diverse.
         const perCat = {};
         const recent = [];
         const PER_CAT = 2;
-        const MAX = 12;
+        const MAX = 9;
         // CDs are an old, mostly-static collection — exclude from "recently added".
         const EXCLUDE = new Set(['cds']);
         for (const i of items) {
           const c = i.category || 'other';
           if (EXCLUDE.has(c)) continue;
+          if (c === 'concerts' && !concertWithinWindow(i)) continue;
           if ((perCat[c] || 0) >= PER_CAT) continue;
           perCat[c] = (perCat[c] || 0) + 1;
           recent.push(i);

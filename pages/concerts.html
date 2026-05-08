@@ -23,6 +23,7 @@
       <a href="./tv.html">📺 tv</a>
       <a href="./movies.html">🎬 movies</a>
       <a href="./games.html">🎮 games</a>
+      <a href="./characters.html">💕 characters</a>
       <a href="./travel.html">✈️ travel</a>
       <a href="./music.html">🎧 music</a>
       <a href="./stats.html">✨ stats</a>
@@ -38,6 +39,11 @@
         <div id="past-root"><p class="empty-state">loading…</p></div>
       </section>
     </main>
+  </div>
+  <div id="concert-modal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal concert-modal" role="dialog" aria-modal="true">
+      <div class="modal-body"></div>
+    </div>
   </div>
   <script src="../js/sparkle.js"></script>
   <script type="module">
@@ -79,26 +85,22 @@
     }
 
     function concertCard(c, { upcoming }) {
-      const setlist = Array.isArray(c.setlist) && c.setlist.length
-        ? `<details class="setlist"><summary>setlist (${c.setlist.length} songs)</summary><ol>${c.setlist.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol></details>`
-        : '';
       const artistImg = c.artistImage
         ? `<img class="concert-artist-img" src="${escapeHtml(c.artistImage)}" alt="${escapeHtml(c.artist || '')}" loading="lazy" onerror="this.style.display='none'" />`
         : '';
-      const rating = c.rating
-        ? `<div class="rating">${'★'.repeat(c.rating)}${'☆'.repeat(5 - c.rating)}</div>`
-        : '';
-      const review = c.review || c.notes
-        ? `<div class="review">${escapeHtml(c.review || c.notes)}</div>`
+      const sentMap = { favorite: '💖 favorite', liked: '💕 liked', neutral: '😐 neutral', disliked: '💔 disliked' };
+      const rating = c.sentiment && sentMap[c.sentiment]
+        ? `<div class="sentiment-badge" style="display:inline-block;background:var(--pink-baby);color:var(--plum);border:1.5px solid var(--plum);border-radius:999px;padding:0.15rem 0.55rem;font-size:0.78rem;font-weight:700;margin:0.3rem 0 0.1rem;">${sentMap[c.sentiment]}</div>`
         : '';
       const meta = [c.venue, c.city].filter(Boolean).map(escapeHtml).join(' · ');
       const dateStr = fmtDate(c.date);
       const right = upcoming
         ? countdown(daysUntil(c.date))
         : (c.tour ? `<span class="tour">${escapeHtml(c.tour)}</span>` : '');
+      const hasMore = !!(c.review || c.notes || (c.photos && c.photos.length) || (c.videos && c.videos.length) || (c.setlist && c.setlist.length));
 
       return `
-        <article class="concert-card ${upcoming ? 'upcoming' : 'past'}">
+        <article class="concert-card ${upcoming ? 'upcoming' : 'past'}${hasMore ? ' clickable' : ''}" ${hasMore ? `data-id="${escapeHtml(c.id)}" role="button" tabindex="0"` : ''}>
           ${artistImg}
           <div class="concert-body">
             <div class="concert-head">
@@ -113,11 +115,68 @@
               ${meta ? `<span class="dot">·</span><span>${meta}</span>` : ''}
             </div>
             ${rating}
-            ${review}
-            ${setlist}
+            ${hasMore ? '<div class="concert-more-hint">click for details ♡</div>' : ''}
           </div>
         </article>
       `;
+    }
+
+    function ytEmbed(url) {
+      // Convert common YouTube/Vimeo URLs into embeddable iframes.
+      try {
+        const u = new URL(url);
+        if (/youtube\.com$/.test(u.hostname) || u.hostname === 'm.youtube.com') {
+          const id = u.searchParams.get('v');
+          if (id) return `<iframe class="concert-video" src="https://www.youtube.com/embed/${id}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        }
+        if (u.hostname === 'youtu.be') {
+          const id = u.pathname.slice(1);
+          if (id) return `<iframe class="concert-video" src="https://www.youtube.com/embed/${id}" frameborder="0" allowfullscreen></iframe>`;
+        }
+        if (/vimeo\.com$/.test(u.hostname)) {
+          const id = u.pathname.split('/').filter(Boolean).pop();
+          if (id) return `<iframe class="concert-video" src="https://player.vimeo.com/video/${id}" frameborder="0" allowfullscreen></iframe>`;
+        }
+        if (/\.(mp4|webm|mov)$/i.test(u.pathname)) {
+          return `<video class="concert-video" src="${escapeHtml(url)}" controls preload="metadata"></video>`;
+        }
+      } catch {}
+      return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>`;
+    }
+
+    function openConcertModal(c) {
+      const backdrop = document.getElementById('concert-modal');
+      const body = backdrop.querySelector('.modal-body');
+      const setlist = Array.isArray(c.setlist) && c.setlist.length
+        ? `<details class="setlist" open><summary>setlist (${c.setlist.length} songs)</summary><ol>${c.setlist.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol></details>`
+        : '';
+      const review = c.review || c.notes
+        ? `<div class="review"><h4>review</h4><p>${escapeHtml(c.review || c.notes).replace(/\n/g, '<br>')}</p></div>`
+        : '';
+      const photos = Array.isArray(c.photos) && c.photos.length
+        ? `<div class="concert-photos"><h4>photos</h4><div class="photo-grid">${c.photos.map(u => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener"><img src="${escapeHtml(u)}" alt="" loading="lazy" /></a>`).join('')}</div></div>`
+        : '';
+      const videos = Array.isArray(c.videos) && c.videos.length
+        ? `<div class="concert-videos"><h4>videos</h4>${c.videos.map(ytEmbed).join('')}</div>`
+        : '';
+      const meta = [c.venue, c.city].filter(Boolean).map(escapeHtml).join(' · ');
+      body.innerHTML = `
+        <button class="modal-close" aria-label="close">×</button>
+        <h3>${escapeHtml(c.title || c.artist || 'untitled show')}</h3>
+        ${c.artist && c.artist !== c.title ? `<div class="artist">${escapeHtml(c.artist)}</div>` : ''}
+        <div class="concert-meta"><span>${escapeHtml(fmtDate(c.date))}</span>${meta ? ` · <span>${meta}</span>` : ''}</div>
+        ${review}
+        ${photos}
+        ${videos}
+        ${setlist}
+      `;
+      backdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeConcertModal() {
+      const backdrop = document.getElementById('concert-modal');
+      backdrop.classList.remove('open');
+      document.body.style.overflow = '';
     }
 
     (async () => {
@@ -151,6 +210,28 @@
       pastRoot.innerHTML = past.length
         ? past.map(c => concertCard(c, { upcoming: false })).join('')
         : '<p class="empty-state">no past shows logged yet ♡</p>';
+
+      // Click-to-open modal (event delegation on both roots).
+      const byId = new Map(items.map(c => [c.id, c]));
+      function handleOpen(e) {
+        const card = e.target.closest('.concert-card.clickable');
+        if (!card) return;
+        if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.type === 'keydown') e.preventDefault();
+        const c = byId.get(card.dataset.id);
+        if (c) openConcertModal(c);
+      }
+      for (const root of [upRoot, pastRoot]) {
+        root.addEventListener('click', handleOpen);
+        root.addEventListener('keydown', handleOpen);
+      }
+      const backdrop = document.getElementById('concert-modal');
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop || e.target.classList.contains('modal-close')) closeConcertModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && backdrop.classList.contains('open')) closeConcertModal();
+      });
     })();
   </script>
 </body>

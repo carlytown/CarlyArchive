@@ -23,6 +23,7 @@
       <a href="./tv.html">📺 tv</a>
       <a href="./movies.html">🎬 movies</a>
       <a href="./games.html">🎮 games</a>
+      <a href="./characters.html">💕 characters</a>
       <a href="./travel.html">✈️ travel</a>
       <a href="./music.html">🎧 music</a>
       <a href="./stats.html">✨ stats</a>
@@ -39,8 +40,8 @@
     highlightNav(); injectFooter();
     initListView({
       category: 'books',
-      sortable: ['dateFinished', 'rating', 'title', 'year'],
-      filterable: ['status', 'genre'],
+      sortable: ['dateFinished', 'dateStarted', 'sentimentRank', 'title', 'year'],
+      filterable: ['status', 'owned', 'genre'],
       fields: { cardMeta: ['author', 'year'] }
     });
   </script>

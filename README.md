@@ -53,14 +53,14 @@ For each category you want, create a Notion database (a Table view works great) 
 |---------------|--------------|-------|
 | Title         | Title        | The default title property — already there. |
 | Status        | Select       | Suggested options vary per category (see below). |
-| Rating        | Number (1–5) | Your personal rating. |
+| Sentiment     | Select       | How you feel about it. Options: `favorite`, `liked`, `neutral`, `disliked`. |
 | Notes         | Text         | Your review / thoughts. |
 | Tags          | Multi-select | Free-form tags. |
 | Date finished | Date         | When you finished/acquired/visited. |
 | Override ID   | Text         | Optional — paste an explicit ID if auto-match picks the wrong record. |
 
 #### Category-specific
-- **Books** — add `Author` (Text). Status options: `Owned`, `Read`, `Reading`, `Want to read`. Override ID = ISBN (10 or 13 digits).
+- **Books** — add `Author` (Text), `Owned` (Checkbox), `Date started` (Date). Status options: `Read`, `Reading`, `Want to read`, `DNF`. Override ID = ISBN (10 or 13 digits).
 - **Manga** — add `Author` (Text), `Volumes owned` (Multi-select of volume numbers like `1`,`2`,`3`,…). Status: `Reading`, `Read`, `On hold`, `Plan to read`, `Owned`. Override ID = MAL manga ID.
 - **CDs** — add `Artist` (Text). Override ID = MusicBrainz release ID.
 - **Concerts** — add `Artist` (Text), `Date` (Date), `Venue` (Text), `City` (Text). Override ID = setlist.fm setlist ID.

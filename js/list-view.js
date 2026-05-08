@@ -157,7 +157,7 @@ export async function initListView(opts) {
 
 function makeCard(item, fields) {
   const card = document.createElement('div');
-  card.className = 'card';
+  card.className = 'card' + (item.sentiment === 'favorite' ? ' is-favorite' : '');
   card.dataset.id = item.id;
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
@@ -170,17 +170,18 @@ function makeCard(item, fields) {
     : `<img class="cover" src="" alt="" onerror="this.style.visibility='hidden'" />`;
   const meta = (fields.cardMeta || []).map(f => {
     const v = item[f];
-    if (!v) return '';
+    if (f === 'owned') return v === true ? `<div class="meta">📚 in my library</div>` : `<div class="meta"> does not own</div>`;
+    if (v == null || v === '' || v === false) return '';
     if (f === 'status') return statusBadge(v);
     if (f === 'playcount') return `<div class="meta lf-playcount">♫ ${Number(v).toLocaleString()} plays</div>`;
     return `<div class="meta">${escapeHtml(Array.isArray(v) ? v.join(', ') : String(v))}</div>`;
   }).join('');
-  const rating = item.rating ? `<div class="rating">${'★'.repeat(item.rating)}${'☆'.repeat(5 - item.rating)}</div>` : '';
+  const rating = sentimentBadge(item.sentiment);
+  const favStar = item.sentiment === 'favorite' ? `<span class="fav-star" aria-label="favorite" title="favorite">★</span>` : '';
   card.innerHTML = `
-    ${cover}
+    <div class="cover-wrap">${cover}${favStar}</div>
     <div class="title">${escapeHtml(item.title || 'Untitled')}</div>
     ${meta}
-    ${rating}
   `;
   card.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
@@ -214,6 +215,11 @@ function openModal(item, fields) {
   const dl = detailFields.map(f => {
     const v = item[f];
     if (v == null || v === '') return '';
+    if (f === 'owned') {
+      return v === true
+        ? `<dt>📚 in my library</dt><dd></dd>`
+        : `<dt>does not own</dt><dd></dd>`;
+    }
     const value = Array.isArray(v) ? v.join(', ') : String(v);
     return `<dt>${escapeHtml(f)}</dt><dd>${escapeHtml(value)}</dd>`;
   }).join('');
@@ -223,7 +229,7 @@ function openModal(item, fields) {
     <button class="close-btn" aria-label="Close">✕</button>
     ${cover}
     <h2>${escapeHtml(item.title)}</h2>
-    ${item.rating ? `<div class="rating" style="font-size:1.2rem;">${'★'.repeat(item.rating)}${'☆'.repeat(5 - item.rating)}</div>` : ''}
+    ${sentimentBadge(item.sentiment, true)}
     <dl>${dl}</dl>
     ${description ? `<p style="font-style:italic;">${escapeHtml(description)}</p>` : ''}
     ${review ? `<div class="review"><strong>my notes:</strong>\n${escapeHtml(review)}</div>` : ''}
@@ -274,3 +280,18 @@ function statusBadge(value) {
   ">${style.icon} ${escapeHtml(v.toLowerCase())}</div>`;
 }
 function escapeAttr(s) { return escapeHtml(s); }
+
+const SENTIMENT_DISPLAY = {
+  favorite: { icon: '💖', label: 'favorite' },
+  liked:    { icon: '💕', label: 'liked' },
+  neutral:  { icon: '😐', label: 'neutral' },
+  disliked: { icon: '💔', label: 'disliked' }
+};
+function sentimentBadge(value, large = false) {
+  if (!value) return '';
+  const v = String(value).toLowerCase();
+  const s = SENTIMENT_DISPLAY[v];
+  if (!s) return '';
+  const size = large ? 'font-size:1rem;padding:0.25rem 0.7rem;' : 'font-size:0.78rem;padding:0.15rem 0.55rem;';
+  return `<div class="sentiment-badge" style="display:inline-block;background:var(--pink-baby);color:var(--plum);border:1.5px solid var(--plum);border-radius:999px;${size}font-weight:700;margin:0.3rem 0 0.1rem;white-space:nowrap;">${s.icon} ${s.label}</div>`;
+}

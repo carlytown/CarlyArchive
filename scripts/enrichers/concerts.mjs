@@ -10,7 +10,7 @@ export async function enrichConcert(item) {
 
   // Always try Wikipedia for the artist's photo (works for both upcoming + past).
   if (item.artist) {
-    const img = await wikipediaImage(item.artist, ['band', 'singer', 'musician']);
+    const img = await wikipediaImage(item.artist, ['singer', 'rapper', 'musician', 'band', 'group', 'song', 'album', 'music']);
     if (img) out.artistImage = img;
   }
 
@@ -29,20 +29,25 @@ export async function enrichConcert(item) {
     'Accept': 'application/json'
   };
   let setlist;
-  if (item.overrideId) {
-    await rateLimit('setlist.fm', 600);
-    setlist = await fetchJson(`https://api.setlist.fm/rest/1.0/setlist/${item.overrideId}`, headers);
-  } else {
-    const params = new URLSearchParams({ artistName: item.artist });
-    if (item.date) {
-      // Setlist.fm wants dd-MM-yyyy
-      const [y, m, d] = item.date.split('-');
-      if (y && m && d) params.set('date', `${d}-${m}-${y}`);
+  try {
+    if (item.overrideId) {
+      await rateLimit('setlist.fm', 600);
+      setlist = await fetchJson(`https://api.setlist.fm/rest/1.0/setlist/${item.overrideId}`, headers);
+    } else {
+      const params = new URLSearchParams({ artistName: item.artist });
+      if (item.date) {
+        // Setlist.fm wants dd-MM-yyyy
+        const [y, m, d] = item.date.split('-');
+        if (y && m && d) params.set('date', `${d}-${m}-${y}`);
+      }
+      if (item.city) params.set('cityName', item.city);
+      await rateLimit('setlist.fm', 600);
+      const search = await fetchJson(`https://api.setlist.fm/rest/1.0/search/setlists?${params}`, headers);
+      setlist = search.setlist?.[0];
     }
-    if (item.city) params.set('cityName', item.city);
-    await rateLimit('setlist.fm', 600);
-    const search = await fetchJson(`https://api.setlist.fm/rest/1.0/search/setlists?${params}`, headers);
-    setlist = search.setlist?.[0];
+  } catch {
+    // setlist.fm 404 / network — keep Wikipedia image we already gathered.
+    return out;
   }
   if (!setlist) return out;
   const songs = (setlist.sets?.set || []).flatMap(s => (s.song || []).map(x => x.name)).filter(Boolean);

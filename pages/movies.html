@@ -23,6 +23,7 @@
       <a href="./tv.html">📺 tv</a>
       <a href="./movies.html">🎬 movies</a>
       <a href="./games.html">🎮 games</a>
+      <a href="./characters.html">💕 characters</a>
       <a href="./travel.html">✈️ travel</a>
       <a href="./music.html">🎧 music</a>
       <a href="./stats.html">✨ stats</a>
@@ -39,7 +40,7 @@
     highlightNav(); injectFooter();
     initListView({
       category: 'movies',
-      sortable: ['dateFinished', 'rating', 'title', 'year'],
+      sortable: ['dateFinished', 'sentimentRank', 'title', 'year'],
       filterable: ['genre'],
       fields: { cardMeta: ['year', 'runtime'] }
     });

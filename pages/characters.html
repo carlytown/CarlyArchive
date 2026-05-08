@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>characters ♡ Carly's Archive</title>
+  <link rel="stylesheet" href="../css/theme.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="banner">
+      <h1>💕 favorite characters</h1>
+      <div class="tagline">~ a wall of all-time faves ~</div>
+    </header>
+    <nav class="nav" aria-label="Main">
+      <a href="../index.html">♡ home</a>
+      <a href="./statuses.html">📝 statuses</a>
+      <a href="./books.html">📚 books</a>
+      <a href="./manga.html">📖 manga</a>
+      <a href="./cds.html">💿 cds</a>
+      <a href="./concerts.html">🎤 concerts</a>
+      <a href="./anime.html">🌸 anime</a>
+      <a href="./tv.html">📺 tv</a>
+      <a href="./movies.html">🎬 movies</a>
+      <a href="./games.html">🎮 games</a>
+      <a href="./characters.html">💕 characters</a>
+      <a href="./travel.html">✈️ travel</a>
+      <a href="./music.html">🎧 music</a>
+      <a href="./stats.html">✨ stats</a>
+    </nav>
+    <main class="main">
+      <div class="character-controls">
+        <input id="char-search" type="search" placeholder="search by name, source, vibe…" />
+        <select id="char-medium">
+          <option value="">all media</option>
+          <option value="anime">anime</option>
+          <option value="manga">manga</option>
+          <option value="book">books</option>
+          <option value="movie">movies</option>
+          <option value="tv">tv</option>
+          <option value="game">games</option>
+          <option value="music">music</option>
+          <option value="other">other</option>
+        </select>
+      </div>
+      <div id="wall" class="polaroid-wall"><p class="empty-state">loading…</p></div>
+    </main>
+  </div>
+  <div id="char-modal" class="modal-backdrop">
+    <div class="modal"></div>
+  </div>
+  <script src="../js/sparkle.js"></script>
+  <script type="module">
+    import { injectFooter, highlightNav } from '../js/layout.js';
+    highlightNav(); injectFooter();
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    let allChars = [];
+    const wall = document.getElementById('wall');
+    const search = document.getElementById('char-search');
+    const mediumSel = document.getElementById('char-medium');
+    const modalBackdrop = document.getElementById('char-modal');
+    const modal = modalBackdrop.querySelector('.modal');
+
+    function polaroid(c, i) {
+      // Slight rotation for that pinned-photo look. Deterministic from index.
+      const rot = ((i * 17) % 7 - 3); // -3 to +3 deg
+      const img = c.cover
+        ? `<img src="${escapeHtml(c.cover)}" alt="${escapeHtml(c.title || '')}" loading="lazy" onerror="this.parentElement.classList.add('no-img')" />`
+        : '';
+      const tape = '<span class="tape"></span>';
+      return `
+        <button type="button" class="polaroid" data-id="${escapeHtml(c.id)}" style="--rot:${rot}deg;">
+          ${tape}
+          <div class="polaroid-photo">${img}</div>
+          <div class="polaroid-caption">
+            <div class="poloroid-name">${escapeHtml(c.title || '')}</div>
+            ${c.source ? `<div class="polaroid-source">${escapeHtml(c.source)}</div>` : ''}
+          </div>
+        </button>
+      `;
+    }
+
+    function render() {
+      const q = (search.value || '').trim().toLowerCase();
+      const m = mediumSel.value;
+      let list = allChars;
+      if (m) list = list.filter(c => (c.medium || '').toLowerCase() === m);
+      if (q) list = list.filter(c => {
+        const hay = [c.title, c.source, c.medium, c.why, c.quote, ...(c.tags || [])].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+      // Sort by rank if present, then by title.
+      list.sort((a, b) => {
+        const ra = a.rank ?? 9999, rb = b.rank ?? 9999;
+        if (ra !== rb) return ra - rb;
+        return (a.title || '').localeCompare(b.title || '');
+      });
+      if (!list.length) {
+        wall.innerHTML = '<p class="empty-state">no characters match ♡</p>';
+        return;
+      }
+      wall.innerHTML = list.map(polaroid).join('');
+    }
+
+    function openModal(id) {
+      const c = allChars.find(x => x.id === id);
+      if (!c) return;
+      const tags = (c.tags || []).map(t => `<span class="char-tag">${escapeHtml(t)}</span>`).join('');
+      modal.innerHTML = `
+        <button class="close-btn" aria-label="Close">✕</button>
+        <div class="char-modal-grid">
+          ${c.cover ? `<img class="char-modal-img" src="${escapeHtml(c.cover)}" alt="${escapeHtml(c.title || '')}" />` : ''}
+          <div>
+            <h2>${escapeHtml(c.title || '')}</h2>
+            ${c.source ? `<p class="char-modal-source">from <strong>${escapeHtml(c.source)}</strong>${c.medium ? ` · ${escapeHtml(c.medium)}` : ''}</p>` : ''}
+            ${c.quote ? `<blockquote class="char-quote">“${escapeHtml(c.quote)}”</blockquote>` : ''}
+            ${c.why ? `<div class="char-why"><strong>why i love them:</strong><br />${escapeHtml(c.why)}</div>` : ''}
+            ${tags ? `<div class="char-tags">${tags}</div>` : ''}
+          </div>
+        </div>
+      `;
+      modalBackdrop.classList.add('open');
+      modal.querySelector('.close-btn').addEventListener('click', closeModal);
+    }
+    function closeModal() {
+      modalBackdrop.classList.remove('open');
+      modal.innerHTML = '';
+    }
+    modalBackdrop.addEventListener('click', e => { if (e.target === modalBackdrop) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    wall.addEventListener('click', e => {
+      const card = e.target.closest('.polaroid');
+      if (card) openModal(card.dataset.id);
+    });
+    search.addEventListener('input', render);
+    mediumSel.addEventListener('change', render);
+
+    (async () => {
+      try {
+        const r = await fetch('../data/characters.json');
+        if (!r.ok) throw 0;
+        allChars = await r.json();
+      } catch {
+        wall.innerHTML = '<p class="empty-state">no characters yet — add some in Notion ♡</p>';
+        return;
+      }
+      if (!allChars.length) {
+        wall.innerHTML = '<p class="empty-state">no characters yet — add some in Notion ♡</p>';
+        return;
+      }
+      render();
+    })();
+  </script>
+</body>
+</html>

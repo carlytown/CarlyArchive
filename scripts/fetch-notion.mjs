@@ -13,7 +13,7 @@ import path from 'node:path';
 import {
   ROOT, DATA_DIR,
   ensureDir, hash, readCache, writeCache,
-  readProp, readTitle, pageCover, pick
+  readProp, readTitle, pageCover, pick, readFiles
 } from './lib/utils.mjs';
 
 import { enrichBook } from './enrichers/books.mjs';
@@ -23,6 +23,7 @@ import { enrichAnime } from './enrichers/anime.mjs';
 import { enrichMovie, enrichTv } from './enrichers/tmdb.mjs';
 import { enrichGame } from './enrichers/games.mjs';
 import { enrichConcert } from './enrichers/concerts.mjs';
+import { enrichCharacter } from './enrichers/characters.mjs';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 if (!NOTION_TOKEN) {
@@ -47,7 +48,8 @@ const CATEGORIES = {
   movies:   { mapper: mapMovie,   enricher: enrichMovie },
   games:    { mapper: mapGame,    enricher: enrichGame },
   travel:   { mapper: mapTravel,  enricher: null },
-  statuses: { mapper: mapStatus,  enricher: null }
+  statuses: { mapper: mapStatus,  enricher: null },
+  characters: { mapper: mapCharacter, enricher: enrichCharacter }
 };
 
 async function queryAll(databaseId) {
@@ -68,20 +70,43 @@ async function queryAll(databaseId) {
 // ---------- Mappers (Notion page -> flat object) ----------
 
 function baseFields(page) {
+  const sentiment = normalizeSentiment(readProp(page, 'Sentiment') || readProp(page, 'Rating'));
   return {
     id: page.id,
     // Look up the title in standard places, then fall back to whatever
     // property is the title type (every DB has exactly one).
     title: readProp(page, 'Title') || readProp(page, 'Name') || readTitle(page) || 'Untitled',
-    rating: readProp(page, 'Rating'),
+    sentiment,
+    sentimentRank: SENTIMENT_RANK[sentiment] || 0,
     review: readProp(page, 'Notes') || readProp(page, 'Review'),
     tags: readProp(page, 'Tags') || [],
-    status: readProp(page, 'Status'),
+    status: readProp(page, 'Status') || readProp(page, 'Reading Status') || readProp(page, 'Watch Status') || readProp(page, 'Play Status'),
     dateAdded: readProp(page, 'Date added') || page.created_time?.slice(0, 10),
     dateFinished: readProp(page, 'Date finished') || readProp(page, 'Date acquired'),
     overrideId: cleanOverrideId(readProp(page, 'Override ID') || readProp(page, 'OverrideID')),
+    imageUrl: readProp(page, 'Image URL') || readProp(page, 'Image') || readProp(page, 'Cover') || readProp(page, 'Cover URL') || readProp(page, 'Book Cover') || readProp(page, 'Photo') || readProp(page, 'photo') || readProp(page, 'Photo URL') || readFiles(page, 'Photos')[0] || readFiles(page, 'Photo')[0] || null,
     notionCover: pageCover(page)
   };
+}
+
+// Sentiment: favorite > liked > neutral > disliked. Accepts numeric Rating
+// (1-5) for backward compatibility with old DBs: 5→favorite, 4→liked,
+// 3→neutral, 1-2→disliked.
+const SENTIMENT_RANK = { favorite: 4, liked: 3, neutral: 2, disliked: 1 };
+function normalizeSentiment(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') {
+    if (v >= 5) return 'favorite';
+    if (v >= 4) return 'liked';
+    if (v >= 3) return 'neutral';
+    return 'disliked';
+  }
+  const s = String(v).toLowerCase().trim();
+  if (['favorite', 'fav', '⭐', '💖', 'love', 'loved'].includes(s)) return 'favorite';
+  if (['liked', 'like', '👍', '💕', 'good'].includes(s)) return 'liked';
+  if (['neutral', 'meh', '😐', 'mid', 'okay', 'ok'].includes(s)) return 'neutral';
+  if (['disliked', 'dislike', '👎', '💔', 'bad', 'hated', 'hate'].includes(s)) return 'disliked';
+  return null;
 }
 
 // Override IDs may be pasted as full URLs or with whitespace — extract the
@@ -106,7 +131,12 @@ function cleanOverrideId(raw) {
 }
 
 function mapBook(page) {
-  return { ...baseFields(page), author: readProp(page, 'Author') };
+  return {
+    ...baseFields(page),
+    author: readProp(page, 'Author'),
+    owned: readProp(page, 'Owned') === true,
+    dateStarted: readProp(page, 'Date started')
+  };
 }
 function mapManga(page) {
   // Volumes owned is a multi-select of volume numbers ("1","2","3",...).
@@ -126,12 +156,23 @@ function mapCd(page) {
   return { ...baseFields(page), artist: readProp(page, 'Artist') };
 }
 function mapConcert(page) {
+  // Photos: Notion Files & Media (URLs expire ~1hr → re-fetched each build)
+  // Photo URLs / Video URLs: rich_text comma/newline-separated stable URLs
+  const splitUrls = (s) => String(s || '')
+    .split(/[\s,]+/)
+    .map(u => u.trim())
+    .filter(u => /^https?:\/\//i.test(u));
+  const photoFiles = readFiles(page, 'Photos');
+  const photoUrls = splitUrls(readProp(page, 'Photo URLs') || readProp(page, 'photo urls'));
+  const videoUrls = splitUrls(readProp(page, 'Video URLs') || readProp(page, 'video urls'));
   return {
     ...baseFields(page),
     artist: readProp(page, 'Artist'),
     date: readProp(page, 'Date') || readProp(page, 'Date finished'),
     venue: readProp(page, 'Venue'),
-    city: readProp(page, 'City')
+    city: readProp(page, 'City'),
+    photos: [...photoFiles, ...photoUrls],
+    videos: videoUrls
   };
 }
 function mapAnime(page) {
@@ -168,6 +209,16 @@ function mapStatus(page) {
     emoji: readProp(page, 'emoji') || readProp(page, 'Emoji') || null,
     tags: readProp(page, 'Tags') || [],
     posted: readProp(page, 'Date') || readProp(page, 'Posted') || page.created_time || null
+  };
+}
+function mapCharacter(page) {
+  return {
+    ...baseFields(page),
+    source: readProp(page, 'Source') || readProp(page, 'From') || null,
+    medium: (readProp(page, 'Medium') || readProp(page, 'Type') || '').toLowerCase() || null,
+    quote: readProp(page, 'Quote') || null,
+    why: readProp(page, 'Why I love them') || readProp(page, 'Why') || readProp(page, 'Notes') || null,
+    rank: readProp(page, 'Rank') || null
   };
 }
 
@@ -225,15 +276,15 @@ async function processCategory(category, dbId) {
     delete merged.notionCover;
     delete merged.overrideId;
 
-    // Cover: prefer enriched (stable remote URL), fall back to Notion (which
-    // expires after ~1hr — only used if you upload a cover directly to a
-    // Notion page, which we don't do). We hotlink instead of downloading,
-    // so no images get committed to the repo. Fallback URLs (e.g. iTunes
-    // when CoverArtArchive 404s) are persisted so the browser can retry.
-    const coverUrl = pick(enriched._coverUrl, base.notionCover);
+    // Cover: manual `image url` from Notion always wins, then enriched
+    // (stable remote URL), then Notion's page cover (expires after ~1hr).
+    // We hotlink instead of downloading. Fallback URLs (e.g. iTunes when
+    // CoverArtArchive 404s) are persisted so the browser can retry.
+    const coverUrl = pick(base.imageUrl, enriched._coverUrl, base.notionCover);
     const fallbackUrls = enriched._coverFallbackUrls || [];
     delete merged._coverUrl;
     delete merged._coverFallbackUrls;
+    delete merged.imageUrl;
     if (coverUrl) {
       merged.cover = coverUrl;
       if (fallbackUrls.length) {
@@ -292,8 +343,8 @@ async function main() {
     if (category.startsWith('_')) continue;
     const items = await processCategory(category, dbId);
     // Statuses live in their own feed (data/statuses.json) — don't mix them
-    // into the cross-category "recently added" / stats rollups.
-    if (category !== 'statuses') all.push(...items);
+    // into all.json. Same for characters (their own page, separate UI).
+    if (category !== 'statuses' && category !== 'characters') all.push(...items);
   }
 
   await fs.writeFile(path.join(DATA_DIR, 'all.json'), JSON.stringify(all, null, 2));

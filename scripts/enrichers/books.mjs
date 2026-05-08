@@ -25,10 +25,16 @@ export async function enrichBook(item) {
     const params = new URLSearchParams({
       title: item.title || '',
       ...(item.author ? { author: item.author } : {}),
-      limit: '1'
+      language: 'eng',
+      limit: '5'
     });
     const search = await fetchJson(`https://openlibrary.org/search.json?${params}`);
-    work = search.docs?.[0];
+    // Prefer the first English-only result; fall back to any result with a cover.
+    const docs = search.docs || [];
+    work = docs.find(d => Array.isArray(d.language) && d.language.length === 1 && d.language[0] === 'eng' && d.cover_i)
+        || docs.find(d => Array.isArray(d.language) && d.language.includes('eng') && d.cover_i)
+        || docs.find(d => d.cover_i)
+        || docs[0];
   }
 
   if (!work) return out;

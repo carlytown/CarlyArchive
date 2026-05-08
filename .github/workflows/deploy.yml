@@ -4,9 +4,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Allow external triggers (e.g. Notion automation hitting the GitHub API
+  # when a new status/row is added). POST to:
+  #   https://api.github.com/repos/<owner>/<repo>/dispatches
+  # with body: { "event_type": "notion-update" }
+  repository_dispatch:
+    types: [notion-update]
   schedule:
-    # Daily at 06:00 UTC — picks up Notion edits
-    - cron: '0 6 * * *'
+    # Every 5 minutes — picks up new Notion edits (especially statuses) quickly.
+    # Public repos get unlimited GitHub Actions minutes on the free tier.
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: read
