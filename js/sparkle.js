@@ -34,7 +34,7 @@
 
   function spawn(x, y) {
     if (!enabled) return;
-    const count = 2 + Math.floor(Math.random() * 2); // 2-3 per move
+    const count = 1; // 1 per move
     for (let i = 0; i < count; i++) {
       const s = document.createElement('span');
       s.className = 'sparkle-emoji';
@@ -65,14 +65,14 @@
   let last = 0;
   document.addEventListener('mousemove', (e) => {
     const now = performance.now();
-    if (now - last < 18) return;
+    if (now - last < 140) return;
     last = now;
     spawn(e.clientX, e.clientY);
   });
 
   document.addEventListener('click', (e) => {
     if (!enabled) return;
-    for (let i = 0; i < 12; i++) spawn(e.clientX, e.clientY);
+    for (let i = 0; i < 4; i++) spawn(e.clientX, e.clientY);
   });
 
   window.toggleSparkles = function () {

@@ -1,0 +1,4 @@
+{
+  "_comment": "Config for the Pokémon card seeding script (scripts/seed-pokemon-notion.mjs). List the card artists you want to import. The seeder queries pokemontcg.io for every card by these artists and creates a row for each in your Notion 'Pokémon Cards' database (idempotent — re-running skips cards that already exist).",
+  "artists": ["Asako Ito"]
+}

@@ -1,0 +1,99 @@
+/* ============================================================
+   Pokémon cards — collection & wishlist
+   ============================================================ */
+
+/* Real trading-card proportions (63mm × 88mm). */
+body[data-category="pokemon"] .card img.cover {
+  aspect-ratio: 63 / 88;
+}
+
+/* Tab bar (Collection / Wishlist) — styled after the music period tabs. */
+.tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+.tab-btn {
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.95rem;
+  padding: 0.3rem 0.9rem;
+  background: var(--pink-cream);
+  color: var(--plum);
+  border: 2px solid var(--plum);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--pink-baby);
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+.tab-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--pink-baby);
+}
+.tab-btn[aria-selected="true"] {
+  background: var(--pink-hot);
+  color: #fff;
+  box-shadow: 2px 2px 0 var(--plum);
+}
+
+/* Un-owned cards in the collection view are greyed out until hovered. */
+.card.is-dimmed img.cover {
+  filter: grayscale(1) opacity(0.55);
+  transition: filter 0.2s ease;
+}
+.card.is-dimmed .title { color: var(--plum-soft); }
+.card.is-dimmed:hover img.cover {
+  filter: grayscale(0) opacity(1);
+}
+
+/* Language ownership flags — top-left corner of the card art. */
+.lang-flags {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: flex;
+  gap: 2px;
+  z-index: 2;
+  pointer-events: none;
+}
+.lang-flag {
+  background: var(--pink-cream);
+  border: 1.5px solid var(--plum);
+  border-radius: 6px;
+  padding: 0 0.25rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+/* Hover price bubble — hidden until the card is hovered/focused. */
+.card .card-price {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translate(-50%, 6px);
+  background: var(--pink-hot);
+  color: #fff;
+  border: 1.5px solid var(--plum);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  box-shadow: 2px 2px 0 var(--plum);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 3;
+}
+.card:hover .card-price,
+.card:focus-within .card-price {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.card .card-price-label {
+  font-size: 0.7em;
+  opacity: 0.85;
+  margin-right: 0.3rem;
+  text-transform: uppercase;
+}

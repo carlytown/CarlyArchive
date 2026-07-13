@@ -8,6 +8,7 @@
     "build": "node scripts/fetch-notion.mjs && node scripts/fetch-lastfm.mjs",
     "build:notion": "node scripts/fetch-notion.mjs",
     "build:lastfm": "node scripts/fetch-lastfm.mjs",
+    "seed:pokemon": "node scripts/seed-pokemon-notion.mjs",
     "watch": "node scripts/watch.mjs",
     "serve": "npx --yes serve ."
   },

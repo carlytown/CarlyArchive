@@ -24,6 +24,7 @@ import { enrichMovie, enrichTv } from './enrichers/tmdb.mjs';
 import { enrichGame } from './enrichers/games.mjs';
 import { enrichConcert } from './enrichers/concerts.mjs';
 import { enrichCharacter } from './enrichers/characters.mjs';
+import { enrichPokemon } from './enrichers/pokemon.mjs';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 if (!NOTION_TOKEN) {
@@ -49,7 +50,8 @@ const CATEGORIES = {
   games:    { mapper: mapGame,    enricher: enrichGame },
   travel:   { mapper: mapTravel,  enricher: null },
   statuses: { mapper: mapStatus,  enricher: null },
-  characters: { mapper: mapCharacter, enricher: enrichCharacter }
+  characters: { mapper: mapCharacter, enricher: enrichCharacter },
+  pokemon:  { mapper: mapPokemon,  enricher: enrichPokemon }
 };
 
 async function queryAll(databaseId) {
@@ -209,6 +211,22 @@ function mapStatus(page) {
     emoji: readProp(page, 'emoji') || readProp(page, 'Emoji') || null,
     tags: readProp(page, 'Tags') || [],
     posted: readProp(page, 'Date') || readProp(page, 'Posted') || page.created_time || null
+  };
+}
+function mapPokemon(page) {
+  // Ownership lives in Notion; the card catalog (art, set, rarity, USD price)
+  // is pulled from pokemontcg.io by the pinned Card ID.
+  const base = baseFields(page);
+  const cardId = readProp(page, 'Card ID') || readProp(page, 'CardID') || base.overrideId || null;
+  const owned = readProp(page, 'Owned') === true;
+  const languages = readProp(page, 'Language') || readProp(page, 'Languages') || [];
+  return {
+    ...base,
+    // Pin enrichment to the card id (reuses the Override ID plumbing).
+    overrideId: cardId,
+    owned,
+    status: owned ? 'Owned' : 'Wishlist',
+    languages: Array.isArray(languages) ? languages : (languages ? [languages] : [])
   };
 }
 function mapCharacter(page) {

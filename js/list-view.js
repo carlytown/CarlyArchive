@@ -20,7 +20,7 @@ if (typeof window !== 'undefined' && !window.__coverFallback) {
 }
 
 export async function initListView(opts) {
-  const { category, fields = {}, sortable = [], filterable = [], seasonal = null } = opts;
+  const { category, fields = {}, sortable = [], filterable = [], seasonal = null, tabs = null, hover = null, defaultDesc = true } = opts;
   const container = document.getElementById('list-root');
   container.dataset.category = category;
   document.body.dataset.category = category;
@@ -77,7 +77,7 @@ export async function initListView(opts) {
   }).join('');
   const sortOpts = sortable.length
     ? `<label>sort: <select data-sort>${sortable.map(s => `<option value="${s}">${s}</option>`).join('')}</select></label>
-       <label><input type="checkbox" data-sort-desc checked /> desc</label>`
+       <label><input type="checkbox" data-sort-desc ${defaultDesc ? 'checked' : ''} /> desc</label>`
     : '';
   controls.innerHTML = `
     <label>search: <input type="search" data-search placeholder="title, tags…" /></label>
@@ -85,6 +85,31 @@ export async function initListView(opts) {
     ${sortOpts}
     <span data-count style="margin-left:auto;font-weight:700;"></span>
   `;
+
+  // Optional tab bar (e.g. Collection / Wishlist). Each tab is either
+  // { label, all: true, dim? } or { label, field, equals, dim? }.
+  let activeTab = 0;
+  if (Array.isArray(tabs) && tabs.length) {
+    const tabBar = document.createElement('div');
+    tabBar.className = 'tab-bar';
+    tabBar.setAttribute('role', 'tablist');
+    tabs.forEach((t, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tab-btn';
+      btn.textContent = t.label;
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+      btn.addEventListener('click', () => {
+        activeTab = i;
+        tabBar.querySelectorAll('.tab-btn').forEach((b, bi) =>
+          b.setAttribute('aria-selected', bi === i ? 'true' : 'false'));
+        render();
+      });
+      tabBar.appendChild(btn);
+    });
+    controls.parentNode.insertBefore(tabBar, controls);
+  }
 
   function render() {
     const q = (controls.querySelector('[data-search]')?.value || '').toLowerCase().trim();
@@ -96,6 +121,10 @@ export async function initListView(opts) {
     const sortDesc = controls.querySelector('[data-sort-desc]')?.checked;
 
     let view = items.filter(i => {
+      const tab = tabs && tabs[activeTab];
+      if (tab && !tab.all) {
+        if (i[tab.field] !== tab.equals) return false;
+      }
       if (q) {
         const hay = JSON.stringify(i).toLowerCase();
         if (!hay.includes(q)) return false;
@@ -125,7 +154,9 @@ export async function initListView(opts) {
     } else {
       const grid = document.createElement('div');
       grid.className = 'card-grid';
-      view.forEach(item => grid.appendChild(makeCard(item, fields)));
+      const tab = tabs && tabs[activeTab];
+      const dimUnowned = !!(tab && tab.dim);
+      view.forEach(item => grid.appendChild(makeCard(item, fields, { hover, dimUnowned })));
       container.appendChild(grid);
     }
     controls.querySelector('[data-count]').textContent = `${view.length} item${view.length === 1 ? '' : 's'}`;
@@ -155,9 +186,13 @@ export async function initListView(opts) {
   };
 }
 
-function makeCard(item, fields) {
+function makeCard(item, fields, opts = {}) {
+  const { hover = null, dimUnowned = false } = opts;
   const card = document.createElement('div');
-  card.className = 'card' + (item.sentiment === 'favorite' ? ' is-favorite' : '');
+  const dimmed = dimUnowned && item.owned === false;
+  card.className = 'card'
+    + (item.sentiment === 'favorite' ? ' is-favorite' : '')
+    + (dimmed ? ' is-dimmed' : '');
   card.dataset.id = item.id;
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
@@ -178,8 +213,10 @@ function makeCard(item, fields) {
   }).join('');
   const rating = sentimentBadge(item.sentiment);
   const favStar = item.sentiment === 'favorite' ? `<span class="fav-star" aria-label="favorite" title="favorite">★</span>` : '';
+  const flags = languageFlags(item.languages);
+  const price = hover ? priceTag(item[hover.field], hover) : '';
   card.innerHTML = `
-    <div class="cover-wrap">${cover}${favStar}</div>
+    <div class="cover-wrap">${cover}${favStar}${flags}${price}</div>
     <div class="title">${escapeHtml(item.title || 'Untitled')}</div>
     ${meta}
   `;
@@ -187,6 +224,30 @@ function makeCard(item, fields) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
   });
   return card;
+}
+
+// Language ownership badges (Pokémon cards). Shows a flag when known,
+// otherwise the language name. Hidden entirely when there are none.
+const LANGUAGE_FLAGS = {
+  english: '🇺🇸', japanese: '🇯🇵', korean: '🇰🇷', chinese: '🇨🇳',
+  french: '🇫🇷', german: '🇩🇪', italian: '🇮🇹', spanish: '🇪🇸'
+};
+function languageFlags(langs) {
+  if (!Array.isArray(langs) || !langs.length) return '';
+  const badges = langs.map(l => {
+    const flag = LANGUAGE_FLAGS[String(l).toLowerCase().trim()];
+    return `<span class="lang-flag" title="${escapeAttr(l)}">${flag || escapeHtml(l)}</span>`;
+  }).join('');
+  return `<div class="lang-flags">${badges}</div>`;
+}
+
+// Hover price tag (USD). Shows an em dash when there's no price.
+function priceTag(value, hover) {
+  const has = typeof value === 'number' && isFinite(value);
+  const prefix = hover.prefix || '';
+  const label = hover.label ? `<span class="card-price-label">${escapeHtml(hover.label)}</span>` : '';
+  const text = has ? `${prefix}${Number(value).toFixed(2)}` : '—';
+  return `<div class="card-price">${label}<span class="card-price-value">${text}</span></div>`;
 }
 
 function openModal(item, fields) {
@@ -218,7 +279,20 @@ function openModal(item, fields) {
     if (f === 'owned') {
       return v === true
         ? `<dt>📚 in my library</dt><dd></dd>`
-        : `<dt>does not own</dt><dd></dd>`;
+        : `<dt>do not own</dt><dd></dd>`;
+    }
+    if (f === 'priceCurrency') return '';
+    if (f === 'priceAvg') {
+      const price = (typeof v === 'number' && isFinite(v)) ? `$${v.toFixed(2)}` : '—';
+      return `<dt>avg price</dt><dd>${price} <span style="color:var(--plum-soft);font-size:0.85em;">USD</span></dd>`;
+    }
+    if (f === 'tcgUrl') {
+      return `<dt>price source</dt><dd><a href="${escapeAttr(v)}" target="_blank" rel="noopener noreferrer">TCGplayer ↗</a></dd>`;
+    }
+    if (f === 'languages') {
+      const list = Array.isArray(v) ? v : [v];
+      if (!list.length) return '';
+      return `<dt>my copy</dt><dd>${escapeHtml(list.join(', '))}</dd>`;
     }
     const value = Array.isArray(v) ? v.join(', ') : String(v);
     return `<dt>${escapeHtml(f)}</dt><dd>${escapeHtml(value)}</dd>`;
